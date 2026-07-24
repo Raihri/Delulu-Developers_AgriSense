@@ -1,0 +1,268 @@
+schema_version: "1.0.0"
+reviewed_at: "2026-07-24"
+default_policy:
+  require_exact_asset_before_ingestion: true
+  require_sha256_for_downloaded_assets: true
+  require_source_locator_on_normalized_records: true
+  allow_runtime_ingestion: false
+  unknown_licence_allows_redistribution: false
+
+sources:
+  - id: barc_frg_2024
+    publisher: Bangladesh Agricultural Research Council
+    title: Fertilizer Recommendation Guide 2024
+    url: "https://apps.barc.gov.bd/fertilizer_recommendation/FRG%20English%2030.10.2024.pdf"
+    asset_type: pdf
+    version: "2024"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [fertilizer, nutrient, crop, aez]
+    status: approved_for_curation
+    licence: not_stated_on_asset_link
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: annual
+    notes: Preserve AEZ, land type, soil-test class, yield target, stage, unit and page/table locator.
+
+  - id: srdi_soil_maps
+    publisher: Soil Resource Development Institute
+    title: SRDI Soil Maps
+    url: "https://srdi.gov.bd/pages/static-pages/6922dfb3933eb65569e23904"
+    asset_type: landing_page
+    version: mixed
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [soil, aez, nutrients, land_use]
+    status: discovery_requires_exact_asset
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: false
+    update_check: quarterly
+    notes: Regional prior only; record map year and scale and do not claim plot-level accuracy.
+
+  - id: fao_cropwat
+    publisher: Food and Agriculture Organization of the United Nations
+    title: CROPWAT
+    url: "https://www.fao.org/land-water/resources/tools/software/cropwat/en"
+    asset_type: software_and_documentation
+    version: "8.0"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: global
+    topics: [water_requirement, irrigation, crop_coefficient]
+    status: approved_as_method_reference
+    licence: verify_asset_specific_terms
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: annual
+    notes: Use local crop and soil inputs; do not treat defaults as Bangladesh observations.
+
+  - id: fao_56
+    publisher: Food and Agriculture Organization of the United Nations
+    title: Crop Evapotranspiration - Guidelines for Computing Crop Water Requirements
+    url: "https://www.fao.org/4/X0490E/X0490E00.htm"
+    asset_type: publication
+    version: "FAO Irrigation and Drainage Paper 56"
+    published_year: 1998
+    accessed_at: "2026-07-24"
+    language: en
+    geography: global
+    topics: [et0, evapotranspiration, crop_coefficient]
+    status: approved_as_method_reference
+    licence: all_rights_reserved
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: never
+    notes: Store chapter/table locators for derived constants and formulas.
+
+  - id: ais_crop_calendar
+    publisher: Agriculture Information Service Bangladesh
+    title: Bangladesh Crop Calendar
+    url: "https://ais.gov.bd/pages/static-pages/6922dbbd933eb65569e0c355"
+    asset_type: landing_page_with_download
+    version: page_updated_2015
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [crop_calendar, season]
+    status: discovery_requires_exact_asset
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: quarterly
+    notes: Pin and hash the linked calendar asset before ingestion.
+
+  - id: ais_crop_production
+    publisher: Agriculture Information Service Bangladesh
+    title: Crop Production Technologies
+    url: "https://ais.gov.bd/site/page/2a525876-6ac6-45a4-b506-5b6363573c37/%5Bfront%5D"
+    asset_type: index_page
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [extension, agronomy, crop_production]
+    status: discovery_requires_exact_page
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: monthly
+    notes: Curate individual crop pages with page title, update date and section locator.
+
+  - id: hdx_cod_bgd
+    publisher: Humanitarian Data Exchange / Common Operational Datasets
+    title: Bangladesh Subnational Administrative Boundaries
+    url: "https://data.humdata.org/dataset/cod-ab-bgd"
+    asset_type: dataset
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: multilingual
+    geography: Bangladesh
+    topics: [administrative_boundaries, pcode, gazetteer]
+    status: approved_pending_resource_pin
+    licence: verify_selected_resource
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: monthly
+    notes: Pin exact resource/version and licence; preferred over free-text location joins.
+
+  - id: brri_released_varieties
+    publisher: Bangladesh Rice Research Institute
+    title: Released Rice Varieties of BRRI
+    url: "https://brri.gov.bd/site/page/6952c1d9-af2c-404c-a2e7-f7eb5c1cae92/-/released-rice-variety-of-brri"
+    asset_type: landing_page_with_downloads
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [rice, variety, season, stress_tolerance]
+    status: discovery_requires_exact_asset
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: monthly
+    notes: Curate only official released-variety assets and validate all dynamic records.
+
+  - id: brri_rice_database
+    publisher: Bangladesh Rice Research Institute
+    title: Rice Database Index
+    url: "https://brri.gov.bd/site/page/f6e878c8-ceac-402d-9bed-6fb29a787428/Rice-Database"
+    asset_type: index_page
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [rice, yield, irrigation, calendar]
+    status: discovery_only
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: monthly
+    notes: Each linked dashboard or file needs its own source entry before ingestion.
+
+  - id: bari_agro_tech_handbook
+    publisher: Bangladesh Agricultural Research Institute
+    title: Agro-Technology Handbook
+    url: "https://bari.gov.bd/site/page/841c811d-14ad-4796-97a4-41cd602d3cfa/Agro-Technology-Hand-Book"
+    asset_type: landing_page_with_editions
+    version: mixed
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [agronomy, non_rice_crops, variety, crop_calendar]
+    status: discovery_requires_exact_edition
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: quarterly
+    notes: Select one edition, pin the asset and retain crop/operation/page locators.
+
+  - id: dae_registered_pesticides
+    publisher: Department of Agricultural Extension Bangladesh
+    title: List of Registered Agricultural Pesticides in Bangladesh
+    url: "https://dae.gov.bd/sites/default/files/files/dae.portal.gov.bd/page/8a812db0_3544_4105_b066_df78074d3efb/Registered%20Agricultural%20PesticidesList%20%286%29.pdf"
+    asset_type: pdf
+    version: verify_document_date
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [pesticide, registration, crop, pest, dosage]
+    status: tier1_approved_pending_status_crosscheck
+    licence: not_stated_on_asset_link
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: monthly
+    notes: Pair with cancellation/status sources and record effective date before recommending.
+
+  - id: bbs_agri_yearbook
+    publisher: Bangladesh Bureau of Statistics
+    title: Year Book of Agricultural Statistics of Bangladesh
+    url: "https://bbs.gov.bd/site/page/3e838eb6-30a2-4709-be85-40484b0c16c6/"
+    asset_type: landing_page_with_editions
+    version: "2024_target"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [yield, production, area, labor, statistics]
+    status: discovery_requires_2024_asset_pin
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: quarterly
+    notes: Do not infer that all financial cost categories are present.
+
+  - id: open_meteo
+    publisher: Open-Meteo
+    title: Forecast and Historical Weather APIs
+    url: "https://open-meteo.com/en/docs"
+    secondary_url: "https://open-meteo.com/en/docs/historical-weather-api"
+    asset_type: api
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: en
+    geography: global
+    topics: [forecast, precipitation, temperature, et0, historical_reanalysis]
+    status: approved_live_api
+    licence: usage_tier_dependent
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: monthly
+    notes: Store request/model/dataset/window/timezone/units and separate forecast from historical baseline.
+
+  - id: gadm_bgd_4_1
+    publisher: GADM
+    title: GADM Bangladesh Administrative Areas
+    url: "https://gadm.org/download_country.html"
+    licence_url: "https://gadm.org/license.html"
+    asset_type: dataset
+    version: "4.1"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [administrative_boundaries]
+    status: reference_only_prefer_hdx
+    licence: academic_and_noncommercial_only
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: annual
+    notes: Commercial use or redistribution requires prior permission.
+
+  - id: plantwise_kb
+    publisher: CABI
+    title: PlantwisePlus Knowledge Bank
+    url: "https://plantwiseplusknowledgebank.org/"
+    licence_url: "https://plantwiseplustoolkit.org/terms/"
+    asset_type: knowledge_portal
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: multilingual
+    geography: global
+    topics: [pest, disease, integrated_pest_management]
+    status: conditional_per_content_item
+    licence: mixed_by_content_type
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: quarterly
+    notes: Create an individual source entry for each ingested factsheet and retain attribution/licence.

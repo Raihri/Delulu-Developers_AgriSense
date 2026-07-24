@@ -122,6 +122,23 @@ dist
 # TernJS port file
 .tern-port
 
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# AgriSense generated/runtime data
+data/raw/
+data/normalized/
+data/curated/
+kb/chroma/
+kb/*.db
+trace-payloads/
+
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
