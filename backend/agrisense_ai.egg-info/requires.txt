@@ -1,0 +1,15 @@
+fastapi<1,>=0.115
+pgvector<1,>=0.4
+psycopg[binary]<4,>=3.2
+python-dotenv<2,>=1.0
+PyYAML<7,>=6.0
+supabase<3,>=2.0
+uvicorn[standard]<1,>=0.30
+
+[ingest]
+pdfplumber<1,>=0.11
+pypdf<7,>=5
+
+[test]
+httpx<1,>=0.27
+pytest<10,>=8

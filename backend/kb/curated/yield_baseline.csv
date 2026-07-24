@@ -1,0 +1,5 @@
+crop_id,variety_id,season,stat_year,geographic_scope,area_acres,production_mt,canonical_yield_t_ha,derivation,source_id,source_locator,curation_status,confidence
+boro_rice,all,boro,2023-24,Bangladesh,12052797,21068368,4.319,"production_mt / area_acres * 2.4710538147",bbs_agri_yearbook,"PDF physical page 65, total Boro 2023-24 row",human_reviewed,high
+maize,all,all,2023-24,Bangladesh,1272076.97,4875919.18,9.472,"production_mt / area_acres * 2.4710538147",bbs_agri_yearbook,"PDF physical page 101, total maize 2023-24 row",human_reviewed,high
+lentil,all,rabi,2023-24,Bangladesh,308608.85,184818.82,1.480,"production_mt / area_acres * 2.4710538147",bbs_agri_yearbook,"PDF physical page 118, total lentil 2023-24 row",human_reviewed,high
+wheat,all,rabi,2023-24,Bangladesh,769842,1172242,3.763,"production_mt / area_acres * 2.4710538147",bbs_agri_yearbook,"PDF section: Estimates of Wheat 2023-24 (area 769,842 acres; production 1,172,242 M.Ton; yield 3.763 t/ha)",human_reviewed,high

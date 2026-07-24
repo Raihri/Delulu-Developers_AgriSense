@@ -1,0 +1,13 @@
+version: "1.0.0"
+reviewed_at: "2026-07-24"
+items:
+  - id: bbs_2024_carrot_table_3_9_29
+    source_id: bbs_agri_yearbook
+    asset_path: "dataset/bbs/agricultural_statistics_yearbook_2024.pdf"
+    source_locator: "PDF physical page 348, Table 3.9.29"
+    scope: "Carrot district area and production, expected 2021-22 through 2023-24"
+    problem: "The third year heading repeats 2022-23 and its values duplicate the preceding column where 2023-24 would be expected."
+    status: blocked
+    action: exclude_from_ingestion
+    correction_allowed: false
+    release_condition: "Verify against an official corrected table or a later BBS edition; retain both sources and a human review note."

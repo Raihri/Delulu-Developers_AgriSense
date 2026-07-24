@@ -1,0 +1,59 @@
+version: "1.0.0"
+method_authority:
+  source_id: fao_56
+  version: "FAO Irrigation and Drainage Paper 56 Rev.1 (2025)"
+  locators:
+    taw_raw: "PDF page 288, equations 8.3 and 8.4"
+    daily_balance: "PDF page 298, equation 8.7"
+    rainfall_runoff: "PDF page 299"
+    irrigation_trigger: "PDF pages 306-307"
+effective_rainfall:
+  method: daily_root_zone_balance
+  definition: "Rain retained in the root zone after explicit runoff and deep percolation."
+  fixed_percentage_allowed: false
+  runoff:
+    required_input: false
+    missing_value: 0.0
+    missing_value_status: provisional_assumption
+    warning: "A zero-runoff fallback must be returned in provenance and is not a calibrated Bangladesh estimate."
+irrigation:
+  default_input_basis: net_infiltrated_mm
+  gross_input_requires_efficiency: true
+  default_efficiency: null
+  policy: "Never silently apply a CROPWAT 8 irrigation-efficiency default."
+water_score_policy:
+  id: provisional_project_policy_v1
+  authority: project_policy_not_fao
+  metric: stress_day_fraction
+  thresholds:
+    S1: "<= 0.05"
+    S2: "<= 0.15"
+    S3: "<= 0.30"
+    N: "> 0.30"
+  status: provisional_unvalidated_for_bangladesh
+  warning: "Thresholds are an inspectable demo policy, not an FAO recommendation or a locally calibrated agronomic threshold."
+crop_critical_depletion_fraction:
+  basis: CROPWAT 8 provisional seed
+  source_id: fao_cropwat
+  status: provisional_unvalidated_for_bangladesh
+  warning: "Single representative p per crop from the CROPWAT .CRO seed; not locally calibrated."
+  values:
+    maize:
+      p: 0.55
+      source_locator: "dataset/fao_cropwat/crops/MAIZE.CRO line 6"
+    lentil:
+      p: 0.60
+      source_locator: "dataset/fao_cropwat/crops/PULSES.CRO line 6"
+    wheat:
+      p: 0.55
+      source_locator: "dataset/fao_cropwat/crops/WHEAT.CRO line 6"
+paddy_rice:
+  potential_etc_allowed: true
+  water_suitability_score_allowed: false
+  status: unassessed
+  blockers:
+    - reviewed land-preparation water
+    - ponding target
+    - percolation/seepage rate
+    - bund and field application losses
+    - local net irrigation availability

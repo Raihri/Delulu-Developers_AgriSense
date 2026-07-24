@@ -1,0 +1,49 @@
+version: "1.0.0"
+reviewed_at: "2026-07-24"
+conflict_policy: quarantine_and_require_human_review
+rules:
+  - rank: 1
+    source_id: fao_56
+    authority_for: [formula, method, water_balance]
+    constraint: "The 2025 FAO-56 Rev.1 methodology controls; older CROPWAT defaults cannot override it."
+  - rank: 2
+    source_id: fao_cropwat
+    authority_for: [provisional_kc_seed, provisional_stage_duration_seed]
+    constraint: "Starting values only when a reviewed Bangladesh-local value is absent."
+  - rank: 3
+    source_id: barc_frg_2024
+    authority_for: [fertilizer_recommendation, nutrient_rate, nutrient_application_timing]
+    constraint: "Preserve crop group, soil-test class, yield target, nutrient, unit and page locator."
+  - rank: 4
+    source_id: brri_released_varieties
+    authority_for: [rice_variety, rice_duration, rice_trait, rice_variety_yield]
+  - rank: 5
+    source_id: bari_agro_tech_handbook
+    authority_for: [non_rice_agronomy]
+    constraint: "Requires OCR or reviewed legacy-encoding conversion before promotion; FRG remains the fertilizer authority."
+  - rank: 6
+    source_id: ais_crop_calendar
+    authority_for: [national_crop_calendar]
+  - rank: 7
+    source_id: ais_crop_production
+    authority_for: [concise_extension_guidance]
+    constraint: "May fill a non-rice gap only while the corresponding BARI record is not curated; mark as fallback."
+  - rank: 8
+    source_id: srdi_soil_maps
+    authority_for: [soil_prior, aez_prior]
+    constraint: "Regional prior only; not a plot-level soil test or point-to-AEZ lookup."
+  - rank: 9
+    source_id: hdx_cod_bgd
+    authority_for: [administrative_geometry, pcode]
+  - rank: 10
+    source_id: bbs_agri_yearbook
+    authority_for: [area, production, yield_statistics]
+    constraint: "Not an agronomy, price or cost authority. May refine sub-month calendar wording only with dual provenance."
+  - rank: 11
+    source_id: project_demo_assumptions
+    authority_for: [editable_demo_price, editable_demo_cost]
+    constraint: "Never use unless the caller explicitly opts in."
+resolution:
+  - "Do not merge semantically similar rows from different authorities."
+  - "Choose the authority for the fact type, retain alternatives as evidence, and surface conflicts."
+  - "No record may be silently corrected. A suspected source error enters data_quality_quarantine.yaml."

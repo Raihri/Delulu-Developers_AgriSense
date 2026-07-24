@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgriSense AI — Demo</title>
+  <style>
+    :root { --ink:#153328; --muted:#5d6e67; --paper:#f8faf5; --card:#fff; --green:#137a4b; --line:#d9e4dc; --warn:#8a4b00; --warn-bg:#fff4dc; --bad:#9b2525; --bad-bg:#fff0ef; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Noto Sans Bengali",sans-serif; }
+    header { background:linear-gradient(120deg,#0a5e3d,#178358); color:#fff; padding:28px max(20px,calc((100vw - 1120px)/2)); }
+    header h1 { margin:0; font-size:clamp(1.6rem,4vw,2.4rem); } header p { margin:.3rem 0 0; opacity:.94; }
+    main { max-width:1120px; margin:22px auto 50px; padding:0 18px; } .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin:16px 0; box-shadow:0 3px 10px #1533280b; }
+    .form-grid,.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; } label { display:block; color:var(--muted); font-size:.92rem; font-weight:650; } input,select,button { font:inherit; } input,select { width:100%; margin-top:5px; padding:9px 10px; border:1px solid #b9cbc0; border-radius:8px; background:white; color:var(--ink); } .check { display:flex; gap:9px; align-items:center; color:var(--ink); padding-top:26px; } .check input { width:auto; margin:0; }
+    button { cursor:pointer; border:0; border-radius:8px; padding:10px 15px; background:var(--green); color:white; font-weight:750; } button.secondary { background:#eaf2ed; color:var(--ink); } button:disabled { opacity:.6; cursor:wait; } .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    h2,h3 { margin:.1rem 0 .7rem; } h2 { font-size:1.25rem; } h3 { font-size:1.05rem; } .muted { color:var(--muted); } .notice { border-left:4px solid #d98a21; background:var(--warn-bg); color:#663a00; padding:10px 12px; border-radius:6px; margin:10px 0; } .error { border-left-color:var(--bad); background:var(--bad-bg); color:#6e1616; }
+    .hidden { display:none; } .pill { display:inline-block; background:#e9f4ed; color:#13613d; border-radius:999px; padding:2px 9px; font-size:.83rem; font-weight:700; } .pill.warn { background:var(--warn-bg); color:#7b4600; }
+    table { width:100%; border-collapse:collapse; font-size:.92rem; } th,td { padding:9px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); } th { color:var(--muted); } .citation { color:#285f49; font-size:.84rem; } ul { padding-left:1.2rem; } details { border:1px solid var(--line); border-radius:8px; padding:9px 11px; margin:8px 0; } summary { cursor:pointer; font-weight:700; } code { overflow-wrap:anywhere; } .event { border-left:3px solid var(--green); padding:8px 10px; margin:8px 0; background:#fbfdfb; }
+    @media (max-width:640px) { th:nth-child(3),td:nth-child(3) { display:none; } }
+  </style>
+</head>
+<body>
+  <header><h1>AgriSense AI</h1><p>বাংলাদেশের কৃষকের জন্য উৎস-ভিত্তিক মৌসুমি পরিকল্পনা · Judge demo</p></header>
+  <main>
+    <section class="card" aria-labelledby="form-title">
+      <h2 id="form-title">Bogura demo input</h2>
+      <p class="muted">স্থান, মাটি ও মৌসুমের তথ্য দিন। ফলাফল আংশিক ও উৎস-উদ্ধৃত থাকবে—অনুমানকে সত্য হিসেবে দেখানো হবে না।</p>
+      <form id="preview-form">
+        <div class="form-grid">
+          <label>Latitude<input name="lat" type="number" step="any" value="24.89539917" required></label>
+          <label>Longitude<input name="lon" type="number" step="any" value="89.35605547" required></label>
+          <label>Soil class<select name="soil_class"><option value="loam" selected>Loam</option><option value="clay">Clay</option><option value="sandy_loam">Sandy loam</option></select></label>
+          <label>Drainage<select name="drainage_condition"><option value="well_drained" selected>Well drained</option><option value="waterlogged">Waterlogged</option></select></label>
+          <label>Area (acres)<input name="area_acres" type="number" step="0.1" min="0.1" value="1" required></label>
+          <label>Sowing date <span class="muted">(optional)</span><input name="sowing_date" type="date" value="2026-10-01"></label>
+          <label>Soil test class<select name="soil_test_class"><option value="medium" selected>Medium (demo)</option></select></label>
+          <label class="check"><input name="allow_assumptions" type="checkbox"> Include provisional financial assumptions</label>
+        </div>
+        <div class="actions"><button id="submit" type="submit">পরিকল্পনা তৈরি করুন</button><button id="reload" type="button" class="secondary" disabled>Saved plan reload করুন</button></div>
+      </form>
+      <p id="loading" class="notice hidden" role="status">পরিকল্পনা ও প্রমাণ তৈরি হচ্ছে…</p>
+      <p id="error" class="notice error hidden" role="alert"></p>
+    </section>
+
+    <section id="result" class="hidden" aria-live="polite">
+      <section class="card"><h2>Plan session</h2><p><span class="pill">Partial, source-grounded</span> <code id="session-id"></code></p><p class="muted">এই session ID দিয়ে একই সংক্ষিপ্ত পরিকল্পনা পুনরায় লোড করা যায়।</p></section>
+      <section class="card"><h2>Location and AEZ</h2><div id="location"></div><div id="aez-warning"></div></section>
+      <section class="card"><h2>Three crop assessments</h2><div id="assessments"></div></section>
+      <section class="card"><h2>Season operations <span class="pill">cited</span></h2><div id="events"></div></section>
+      <section class="card"><h2>Financial view</h2><div id="financials"></div></section>
+      <section class="card"><h2>Known limits and required inputs</h2><div id="limits"></div></section>
+      <section class="card"><h2>Evidence trace</h2><p id="trace-summary" class="muted"></p><div id="traces"></div></section>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const citation = (item) => item?.source_id ? `<div class="citation">Source: ${escapeHtml(item.source_id)} · ${escapeHtml(item.source_locator)}</div>` : '';
+    let sessionId = null;
+
+    function render(data) {
+      sessionId = data.session_id;
+      $('result').classList.remove('hidden'); $('reload').disabled = !sessionId;
+      $('session-id').textContent = sessionId;
+      const admin = data.location?.admin || {};
+      $('location').innerHTML = `<p><strong>${escapeHtml(admin.adm3?.name || 'Location not matched')}</strong> · P-code: <code>${escapeHtml(admin.adm3?.pcode || 'Unavailable')}</code></p><p class="muted">${escapeHtml(data.location?.geometry_source || '')}</p>`;
+      const candidates = (data.location?.aez_candidates || []).map(x => `AEZ ${escapeHtml(x.aez_id)}`).join(', ') || 'No reviewed candidate';
+      $('aez-warning').innerHTML = `<div class="notice"><strong>AEZ candidate only:</strong> ${escapeHtml(candidates)}. ${escapeHtml(data.location?.warning || 'A point-level AEZ has not been resolved.')}</div>`;
+      $('assessments').innerHTML = `<table><thead><tr><th>Crop</th><th>Soil / water</th><th>Calendar & evidence</th><th>Decision</th></tr></thead><tbody>${(data.assessments || []).map(row => `<tr><td><strong>${escapeHtml(row.crop_id)}</strong></td><td>${escapeHtml(row.soil_class)}<br><span class="muted">${escapeHtml(row.water_class)}</span></td><td>${citation(row.soil_evidence)}${citation(row.calendar)}</td><td>${escapeHtml(row.ranking_status)}</td></tr>`).join('')}</tbody></table>`;
+      const events = data.season_events?.events || [];
+      $('events').innerHTML = events.length ? events.map(e => `<article class="event"><strong>${escapeHtml(e.crop_id)} — ${escapeHtml(e.operation)}</strong><br>${escapeHtml(e.timing || '')}${e.date_start ? `<br><span class="pill">${escapeHtml(e.date_start)} to ${escapeHtml(e.date_end)}</span>` : ''}${e.month_window ? `<br><span class="muted">Month window: ${escapeHtml(e.month_window.start_month)}–${escapeHtml(e.month_window.end_month)}</span>` : ''}${citation(e)}</article>`).join('') : '<p class="muted">No cited operations were returned.</p>';
+      const financials = data.financials || {};
+      if (financials.status === 'blocked_until_assumption_opt_in') $('financials').innerHTML = `<div class="notice"><strong>Blocked:</strong> ${escapeHtml(financials.reason)}</div>`;
+      else $('financials').innerHTML = `<div class="notice"><strong>Provisional assumptions accepted.</strong> ${escapeHtml(financials.warning || '')}</div><ul>${(financials.by_crop || []).map(x => `<li><strong>${escapeHtml(x.crop_id)}</strong>: ${escapeHtml(x.net_profit_bdt ?? 'See cited assumptions')} BDT ${citation(x)}</li>`).join('')}</ul>`;
+      const missing = (data.missing || []).map(x => `<li><strong>${escapeHtml(x.field)}:</strong> ${escapeHtml(x.reason)}</li>`).join('');
+      const unassessed = (data.unassessed || []).map(x => `<li><strong>${escapeHtml(x.crop_id)} / ${escapeHtml(x.factor)}:</strong> ${escapeHtml(x.reason)}</li>`).join('');
+      $('limits').innerHTML = `${(data.warnings || []).map(x => `<div class="notice">${escapeHtml(x)}</div>`).join('')}<h3>Still needed</h3><ul>${missing}</ul><h3>Unassessed</h3><ul>${unassessed}</ul>`;
+      $('trace-summary').textContent = `${(data.trace_ids || []).length} safe computation traces were saved. Raw coordinates, secrets and source documents are not stored.`;
+      $('traces').innerHTML = (data.trace_ids || []).map((id, i) => `<details><summary>Trace ${i + 1}</summary><code>${escapeHtml(id)}</code></details>`).join('');
+      window.scrollTo({top: $('result').offsetTop - 12, behavior:'smooth'});
+    }
+    async function requestPreview(url, options) {
+      const response = await fetch(url, options);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || `Request failed (${response.status})`);
+      return payload;
+    }
+    $('preview-form').addEventListener('submit', async (event) => {
+      event.preventDefault(); $('error').classList.add('hidden'); $('loading').classList.remove('hidden'); $('submit').disabled = true;
+      const form = new FormData(event.currentTarget);
+      const payload = {lat:Number(form.get('lat')), lon:Number(form.get('lon')), soil_class:form.get('soil_class'), drainage_condition:form.get('drainage_condition'), area_acres:Number(form.get('area_acres')), allow_assumptions:form.get('allow_assumptions') === 'on', soil_test_class:form.get('soil_test_class')};
+      if (form.get('sowing_date')) payload.sowing_date = form.get('sowing_date');
+      try { render(await requestPreview('/plan/preview', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})); }
+      catch (err) { $('error').textContent = `লোড করা যায়নি: ${err.message}. Check that the backend and Supabase configuration are running.`; $('error').classList.remove('hidden'); }
+      finally { $('loading').classList.add('hidden'); $('submit').disabled = false; }
+    });
+    $('reload').addEventListener('click', async () => { if (!sessionId) return; $('error').classList.add('hidden'); $('loading').classList.remove('hidden'); try { render(await requestPreview(`/plan/preview/${encodeURIComponent(sessionId)}`)); } catch (err) { $('error').textContent = `Saved plan reload করা যায়নি: ${err.message}`; $('error').classList.remove('hidden'); } finally { $('loading').classList.add('hidden'); } });
+  </script>
+</body>
+</html>

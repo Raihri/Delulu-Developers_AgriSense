@@ -1,0 +1,10 @@
+# Never copy the local install or build output into the image (huge, rebuilt).
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+npm-debug.log*
+.DS_Store

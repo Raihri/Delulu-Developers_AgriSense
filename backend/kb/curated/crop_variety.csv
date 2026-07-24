@@ -1,0 +1,4 @@
+crop_id,variety_id,variety_name,season,duration_min_days,duration_base_days,duration_max_days,yield_min_t_ha,yield_base_t_ha,yield_max_t_ha,trait,geographic_scope,source_id,source_locator,curation_method,curation_status,confidence
+boro_rice,brri_dhan28,BRRI dhan28,boro,140,140,140,5.5,5.75,6.0,standard,Bangladesh,brri_released_varieties,BRRI dhan28 leaflet PDF page 1,human_visual_transcription,human_reviewed,medium
+boro_rice,brri_dhan29,BRRI dhan29,boro,160,160,160,7.5,7.5,7.5,standard,Bangladesh,brri_released_varieties,BRRI dhan29 leaflet PDF page 1,human_visual_transcription,human_reviewed,medium
+boro_rice,brri_dhan97,BRRI dhan97,boro,148,152,155,4.89,4.89,4.89,salt_tolerant,Bangladesh,brri_released_varieties,BRRI dhan97 leaflet PDF page 1,human_visual_transcription,human_reviewed,medium

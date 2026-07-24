@@ -1,0 +1,7 @@
+adm_level,pcode,canonical_name_en,alias,language,alias_type,source_id,source_locator,curation_status,confidence
+ADM1,BD50,Rajshahi,Rajshahi,en,canonical,hdx_cod_bgd,ADM1 fields in bgd_admin3.geojson,human_reviewed,high
+ADM1,BD50,Rajshahi,রাজশাহী,bn,official_bn,bangladesh_admin_names,Official Rajshahi Division page title,human_reviewed,high
+ADM2,BD5010,Bogura,Bogura,en,canonical,hdx_cod_bgd,ADM2 fields in bgd_admin3.geojson,human_reviewed,high
+ADM2,BD5010,Bogura,বগুড়া,bn,official_bn,bangladesh_admin_names,Official Bogura District page title,human_reviewed,high
+ADM3,BD50100020,Bogura Sadar,Bogura Sadar,en,canonical,hdx_cod_bgd,Feature adm3_pcode=BD50100020 in bgd_admin3.geojson,human_reviewed,high
+ADM3,BD50100020,Bogura Sadar,বগুড়া সদর,bn,official_bn,dae_bogura_sadar_profile,Official DAE Bogura Sadar office page title,human_reviewed,high

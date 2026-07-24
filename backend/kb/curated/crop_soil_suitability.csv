@@ -1,0 +1,12 @@
+crop_id,variety_id,soil_class,drainage_condition,suitability_class,geographic_scope,authority_role,source_id,source_locator,curation_method,curation_status,confidence
+maize,all,sandy_loam,well_drained,S1,Bangladesh,AIS fallback until BARI record is curated,ais_crop_production,"Maize HTML section: উপযুক্ত জমি ও মাটি",manual_html_section_review,human_reviewed,medium
+maize,all,loam,well_drained,S1,Bangladesh,AIS fallback until BARI record is curated,ais_crop_production,"Maize HTML section: উপযুক্ত জমি ও মাটি",manual_html_section_review,human_reviewed,medium
+maize,all,any,waterlogged,N,Bangladesh,AIS fallback until BARI record is curated,ais_crop_production,"Maize HTML section: উপযুক্ত জমি ও মাটি",manual_html_section_review,human_reviewed,medium
+lentil,all,sandy_loam,well_drained,S1,Bangladesh,AIS fallback until BARI record is curated,ais_crop_production,"Lentil HTML section: মাটি",manual_html_section_review,human_reviewed,medium
+lentil,all,loam,well_drained,S1,Bangladesh,AIS fallback until BARI record is curated,ais_crop_production,"Lentil HTML section: মাটি",manual_html_section_review,human_reviewed,medium
+lentil,all,clay_loam,well_drained,S1,Bangladesh,AIS fallback until BARI record is curated,ais_crop_production,"Lentil HTML section: মাটি",manual_html_section_review,human_reviewed,medium
+lentil,all,any,waterlogged,N,Bangladesh,AIS fallback until BARI record is curated,ais_crop_production,"Lentil HTML section: মাটি",manual_html_section_review,human_reviewed,medium
+wheat,all,sandy_loam,well_drained,S1,Bangladesh,AIS/BBS dry-season upland classification; BARI texture record pending,ais_crop_calendar,"PDF page 1, wheat (গম) rabi dry-season upland row",manual_calendar_visual_review,human_reviewed,low
+wheat,all,loam,well_drained,S1,Bangladesh,AIS/BBS dry-season upland classification; BARI texture record pending,ais_crop_calendar,"PDF page 1, wheat (গম) rabi dry-season upland row",manual_calendar_visual_review,human_reviewed,low
+wheat,all,clay_loam,well_drained,S2,Bangladesh,AIS/BBS dry-season upland classification; BARI texture record pending,ais_crop_calendar,"PDF page 1, wheat (গম) rabi dry-season upland row",manual_calendar_visual_review,human_reviewed,low
+wheat,all,any,waterlogged,N,Bangladesh,AIS/BBS dry-season upland classification; wheat is not a ponded crop,ais_crop_calendar,"PDF physical page 39 (BBS), Wheat grown without standing water",manual_calendar_visual_review,human_reviewed,low

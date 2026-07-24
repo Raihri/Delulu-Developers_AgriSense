@@ -1,0 +1,475 @@
+schema_version: "2.0.0"
+reviewed_at: "2026-07-24"
+default_policy:
+  require_exact_asset_before_ingestion: true
+  require_sha256_for_downloaded_assets: true
+  require_source_locator_on_curated_records: true
+  allow_runtime_ingestion: false
+  unknown_licence_allows_redistribution: false
+  conflict_resolution: quarantine_and_human_review
+status_vocabulary:
+  download_status: [downloaded, live_api, not_downloaded, not_applicable]
+  curation_status: [curated_subset, raw_only, approved_for_curation, requires_ocr, requires_status_crosscheck, reference_only]
+  safety_status: [approved, provisional, blocked, approved_with_quarantine, licence_restricted]
+
+sources:
+  - id: barc_frg_2024
+    publisher: Bangladesh Agricultural Research Council
+    title: Fertilizer Recommendation Guide 2024
+    url: "https://apps.barc.gov.bd/fertilizer_recommendation/FRG%20English%2030.10.2024.pdf"
+    asset_type: pdf
+    version: "2024"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [fertilizer, nutrient, crop, aez]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: provisional
+    licence: not_stated_on_asset_link
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: annual
+    local_path: "dataset/FRG English 30.10.2024.pdf"
+    sha256: "fba07db1be079e3e4ab2110242edc640bbc97b83274725b3ff391d35dbcdb927"
+    pages: 260
+    curated_scope: "Medium soil-test rows for BRRI dhan28, BRRI dhan29, maize and lentil only."
+    notes: "Preserve crop group, soil-test class, yield target, nutrient, stage, unit and page locator."
+
+  - id: srdi_soil_maps
+    publisher: Soil Resource Development Institute
+    title: SRDI Soil Maps
+    url: "https://srdi.gov.bd/pages/static-pages/6922dfb3933eb65569e23904"
+    asset_type: selected_official_maps
+    version: "1995-2020"
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [soil, aez, nutrients, land_use]
+    download_status: downloaded
+    curation_status: raw_only
+    safety_status: provisional
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: false
+    update_check: quarterly
+    selected_files:
+      - title: Agroecological Regions of Bangladesh
+        map_year: 1995
+        path: "dataset/169510e1bec44c1ab747462d26b4462f.pdf"
+        sha256: "fe0a8b57807bdb09b6c853b0e67b3db226248f4255d3cb53e41d216c853830ac"
+      - title: General Soil Map of Bangladesh
+        map_year: 1997
+        path: "dataset/43afc94bb7794981be7122fba5e5973e.pdf"
+        sha256: "f98b1ccc18bc268e2fa9b1bcfb2b9fe7c2024266e443dc2b76e841f297d37e9c"
+      - title: Organic Matter Status Map of Bangladesh
+        map_year: 2020
+        path: "dataset/2a568332e1c64735a8961053259ca383.jpg"
+        sha256: "8f27a539b6f73ca9a69fc00f0b74f9b070dc1c35393b73857ae4a4cf04c9f162"
+      - title: Soil Reaction Status Map of Bangladesh
+        map_year: 2020
+        path: "dataset/bd52b5316585446fb3b58bdb7676bb04.jpg"
+        sha256: "8d1265b6b5cb4a9361ba12ab716a44828a95967db2b8cf2ed1df397333de958b"
+    notes: "Regional priors only. The downloaded AEZ and general-soil assets are dated 1995 and 1997, not 2010, and are not georeferenced point lookup data."
+
+  - id: fao_cropwat
+    publisher: Food and Agriculture Organization of the United Nations
+    title: CROPWAT 8 data files
+    url: "https://www.fao.org/land-water/databases-and-software/cropwat/en/"
+    download_url: "https://www.fao.org/fileadmin/user_upload/faowater/Applications/CRW8.ZIP"
+    asset_type: software_archive_with_data
+    version: "8.0"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: global
+    topics: [water_requirement, irrigation, crop_coefficient]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: provisional
+    licence: verify_asset_specific_terms
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: annual
+    archive_sha256: "999a7ad3b59b531688b1c8b6f0ded5b9247bbbd1aec83e5bfa5e79e095e3c86d"
+    local_dataset_root: "dataset/fao_cropwat"
+    selected_files:
+      - path: "dataset/fao_cropwat/crops/RICE.CRO"
+        sha256: "f1ff0c5dc16382a8d8f2d7096a901a3355fa978db482f83d728753358b145d7a"
+      - path: "dataset/fao_cropwat/crops/MAIZE.CRO"
+        sha256: "f53866028677f4337c5ee930930ecd0d42beeab1f739f9cd973cf5dd423ffa73"
+      - path: "dataset/fao_cropwat/crops/POTATO.CRO"
+        sha256: "32d6b6c4a8b58596994bbe2b9669607708c25e4930e0b154747eb30d51aa4bb4"
+      - path: "dataset/fao_cropwat/crops/PULSES.CRO"
+        sha256: "28548bbcc68909e5240b6f4169d05cb975e060a598dc48633ed81bcde0009fc8"
+      - path: "dataset/fao_cropwat/crops/WHEAT.CRO"
+        sha256: "358ea89d689dd1657a13b68afe47991062b0c0704b11ba8fdcb61a23582662e1"
+      - path: "dataset/fao_cropwat/soils/LIGHT.SOI"
+        sha256: "a0ad0ab884499abcf4a9425f6b1adae041240c45026f5b1a8aba70b5f48bb364"
+      - path: "dataset/fao_cropwat/soils/MEDIUM.SOI"
+        sha256: "b270227601c642c89d245fb9fe01c34a692044a239513a7b2322a533c5e244c5"
+      - path: "dataset/fao_cropwat/soils/HEAVY.SOI"
+        sha256: "384a85f0b0343ce93ad27ae1e77baff0191e9605204013d17dcb0752db06f1f1"
+    excluded_components: [program, help, language_files, examples, climate, rainfall, sessions, reports]
+    notes: "Provisional parameter seeds only. The Pulses file is a low-confidence lentil proxy; the paddy rice format is not approved for water suitability scoring."
+
+  - id: fao_56
+    publisher: Food and Agriculture Organization of the United Nations
+    title: Crop Evapotranspiration - Guidelines for Computing Crop Water Requirements
+    url: "https://doi.org/10.4060/cd6621en"
+    download_url: "https://openknowledge.fao.org/server/api/core/bitstreams/adb9d711-428b-42da-a47f-db6f8b804848/content"
+    asset_type: pdf
+    version: "FAO Irrigation and Drainage Paper 56 Rev.1, second edition"
+    published_year: 2025
+    accessed_at: "2026-07-24"
+    language: en
+    geography: global
+    topics: [et0, evapotranspiration, crop_coefficient, root_zone_balance]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: approved
+    licence: cc_by_4_0
+    licence_url: "https://creativecommons.org/licenses/by/4.0/legalcode.en"
+    redistribution_allowed: true
+    attribution_required: true
+    machine_readable: true
+    update_check: annual
+    local_path: "dataset/fao/fao56_rev1_2025.pdf"
+    sha256: "85c5657fa6b8519e2111ea8cdb1b39cbe440bd710a9cd154aed7dd57edc5e64d"
+    pages: 434
+    notes: "Method authority. Retain equation, chapter and table locators; do not mix older defaults silently."
+
+  - id: ais_crop_calendar
+    publisher: Agriculture Information Service Bangladesh
+    title: Bangladesh Crop Calendar
+    url: "https://ais.gov.bd/pages/static-pages/6922dbbd933eb65569e0c355"
+    download_url: "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-ais/2024/12/3825ada8c6bd401abb7d01652e4fa468.pdf"
+    asset_type: image_only_pdf
+    version: page_updated_2015
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [crop_calendar, season]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: provisional
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: false
+    update_check: quarterly
+    local_path: "dataset/ais/bangladesh_crop_calendar.pdf"
+    sha256: "945882765560ac3fc226ceba79114dc2041cfe056c29abdd5e57b24169def14c"
+    pages: 2
+    extraction_method: human_visual_transcription
+    notes: "National month bands only; not location-specific dates."
+
+  - id: ais_crop_production
+    publisher: Agriculture Information Service Bangladesh
+    title: Crop Production Technologies
+    url: "https://ais.gov.bd/site/page/2a525876-6ac6-45a4-b506-5b6363573c37/%5Bfront%5D"
+    asset_type: selected_official_html_pages
+    version: "current_in_scope_pages_reviewed_2026-07-24"
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [extension, agronomy, crop_production]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: provisional
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: monthly
+    selected_files:
+      - crop: aus_rice
+        source_url: "https://ais.gov.bd/pages/krishi-kotha/আউশ-ধানের-আবাদ-ও-ফলন-বৃদ্ধিতে-করণীয়-f25a06-6922d952dbfbab28ce04b4b5"
+        path: "dataset/ais/crop_production/aus_rice_2025.html"
+        sha256: "a4ce60fa81a7ac34143009eea42104729696ddb19d630aa93a9efe4a876a275c"
+      - crop: maize
+        source_url: "https://ais.gov.bd/pages/ekrishi/ভুট্টা-xq5d9r-6975d4840243b752c3c31b3b"
+        path: "dataset/ais/crop_production/maize_2026.html"
+        sha256: "1cfcf1cdc800f60579f42a82f1c67a4c60c1b315d5bea2454810f60a0a196dba"
+      - crop: lentil
+        source_url: "https://ais.gov.bd/pages/ekrishi/মসুর-1e2qhm-69a2cd8ae64a23d0fb624c22"
+        path: "dataset/ais/crop_production/lentil_2026.html"
+        sha256: "f08e764503173c8a5bd3617790b1c782916d488c2a5bd6ec2d44d73e5f2fccc4"
+    notes: "HTML must be cleaned to article sections and manually checked before promotion."
+
+  - id: hdx_cod_bgd
+    publisher: Humanitarian Data Exchange / Common Operational Datasets
+    title: Bangladesh Subnational Administrative Boundaries
+    url: "https://data.humdata.org/dataset/cod-ab-bgd"
+    metadata_url: "https://data.humdata.org/api/3/action/package_show?id=cod-ab-bgd"
+    download_url: "https://data.humdata.org/dataset/401d3fae-4262-48c9-891f-461fd776d49b/resource/cec2abe3-d8b7-4025-9362-9f7e780f2a07/download/bgd_admin_boundaries.geojson.zip"
+    asset_type: geojson_archive_member
+    version: "v03"
+    data_valid_on: "2023-05-21"
+    resource_last_modified: "2026-01-26"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [administrative_boundaries, pcode, gazetteer]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: approved
+    licence: cc_by_igo_3_0
+    licence_url: "http://creativecommons.org/licenses/by/3.0/igo/legalcode"
+    redistribution_allowed: true
+    attribution_required: true
+    machine_readable: true
+    update_check: monthly
+    resource_archive_sha256: "ec54c97c2004bbee084afa3f662abb202d8ec038dbfd398af2ebb9b1bf3ec9e5"
+    source_member: "bgd_admin3.geojson"
+    local_path: "dataset/hdx/bgd_admin3.geojson"
+    sha256: "06824ce4d7e324bf1f65d1c4fbfe9ebdc5a6a1f9d9edea951a4b1b2f8bea88ad"
+    feature_count: 507
+    unique_adm3_pcodes: 507
+    notes: "The pinned ADM3 file contains English names only. Bengali aliases are curated separately."
+
+  - id: dae_bogura_sadar_profile
+    publisher: Department of Agricultural Extension, Bogura Sadar
+    title: Bogura Sadar agricultural profile
+    url: "https://dae.sadar.bogra.gov.bd/pages/static-pages/697fcfb235ce18e1c06d49f9"
+    asset_type: official_html_page
+    version: accessed_2026-07-24
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bogura Sadar
+    topics: [aez, administrative_alias]
+    download_status: not_downloaded
+    curation_status: curated_subset
+    safety_status: approved
+    licence: not_stated_on_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: quarterly
+    notes: "Supports only the reviewed ADM3-to-AEZ candidate crosswalk; it is not farm-point geometry."
+
+  - id: bangladesh_admin_names
+    publisher: Bangladesh National Portal
+    title: Official Bengali administrative names for the demo geography
+    url: "https://www.bogura.gov.bd/bn/site/page/rrJ8-%E0%A6%AC%E0%A6%97%E0%A7%81%E0%A7%9C%E0%A6%BE-%E0%A6%9C%E0%A7%87%E0%A6%B2%E0%A6%BE%E0%A6%B0-%E0%A7%A7%E0%A7%A6%E0%A7%AE-%E0%A6%9F%E0%A6%BF-%E0%A6%87%E0%A6%89%E0%A6%A8%E0%A6%BF%E0%A7%9F%E0%A6%A8%E0%A7%87%E0%A6%B0-%E0%A6%A4%E0%A6%BE%E0%A6%B2%E0%A6%BF%E0%A6%95%E0%A6%BE"
+    secondary_url: "https://lged.rajshahidiv.gov.bd/pages/static-pages/697fc89d35ce18e1c06d171a"
+    asset_type: official_html_pages
+    version: accessed_2026-07-24
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Rajshahi Division and Bogura District
+    topics: [administrative_alias]
+    download_status: not_downloaded
+    curation_status: curated_subset
+    safety_status: approved
+    licence: not_stated_on_pages
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: annual
+
+  - id: brri_released_varieties
+    publisher: Bangladesh Rice Research Institute
+    title: Released Rice Varieties of BRRI
+    url: "https://brri.gov.bd/pages/static-pages/6922dc75933eb65569e107be"
+    asset_type: selected_image_only_pdfs
+    version: "demo_subset_from_page_updated_2026-04-23"
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [rice, variety, season, stress_tolerance]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: provisional
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: false
+    update_check: monthly
+    selected_files:
+      - variety: "BRRI dhan28"
+        season: boro
+        path: "dataset/brri/brri_dhan28.pdf"
+        sha256: "489844b33a3fa4e28efb394b719ff55f4cda66012794f09e993221aeee2382a8"
+      - variety: "BRRI dhan29"
+        season: boro
+        path: "dataset/brri/brri_dhan29.pdf"
+        sha256: "89bce6ad3a508d2a52705ad53ff3f388a44bf7361668f3eeb07c4dffe7c989f9"
+      - variety: "BRRI dhan97"
+        season: boro
+        trait: salt_tolerant
+        path: "dataset/brri/brri_dhan97.pdf"
+        sha256: "c4291f59e5f89ced1741bdb17c3a5a2b6f6e7a0f0671fdfed96471d53ec9db4b"
+    extraction_method: human_visual_transcription
+    notes: "Only the three named demo varieties are curated."
+
+  - id: brri_rice_database
+    publisher: Bangladesh Rice Research Institute
+    title: Rice Database - Aman varieties by AEZ
+    url: "https://brri.gov.bd/site/page/f6e878c8-ceac-402d-9bed-6fb29a787428/Rice-Database"
+    asset_type: pdf
+    version: "2020"
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [rice, variety, aez, district, land_type, aman]
+    download_status: downloaded
+    curation_status: raw_only
+    safety_status: provisional
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: monthly
+    local_path: "dataset/brri/rice_database/aman_varieties_by_aez_2020.pdf"
+    sha256: "120e48af41280d803afea30a51b86b6cea038725c872c0a7f04a28f3c5da2f3d"
+    pages: 19
+    notes: "Not used in the Boro demo slice."
+
+  - id: bari_agro_tech_handbook
+    publisher: Bangladesh Agricultural Research Institute
+    title: Agro-Technology Handbook
+    url: "https://bari.gov.bd/site/page/841c811d-14ad-4796-97a4-41cd602d3cfa/Agro-Technology-Hand-Book"
+    download_url: "https://drive.google.com/uc?export=download&id=1ErE_Fmhs2v_b9xgLzKEuE_5dPoAVlerF"
+    asset_type: pdf
+    version: "10th edition"
+    accessed_at: "2026-07-24"
+    language: bn
+    geography: Bangladesh
+    topics: [agronomy, non_rice_crops, variety, crop_calendar]
+    download_status: downloaded
+    curation_status: requires_ocr
+    safety_status: provisional
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: false
+    text_encoding: legacy_bengali_font
+    update_check: quarterly
+    local_path: "dataset/bari/agro_technology_handbook_10th_edition.pdf"
+    sha256: "2a9b41dcfa60e10137f341bead3ae59f8aeb9b4921ade684eef60a79710509f8"
+    pages: 650
+    notes: "Visually readable, but extracted Bengali is malformed and not RAG-ready. OCR or reviewed Bijoy/legacy-font conversion is required."
+
+  - id: dae_registered_pesticides
+    publisher: Department of Agricultural Extension Bangladesh
+    title: List of Registered Agricultural Pesticides in Bangladesh
+    url: "https://dae.gov.bd/site/files/4ea8e032-77df-4e6b-952b-5eab3004113c/-Registered-Pesticide"
+    notices_url: "https://dae.gov.bd/pages/notices"
+    asset_type: pdf
+    version: "approved_up_to_ptac_meeting_81"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [pesticide, registration, crop, pest, dosage]
+    download_status: downloaded
+    curation_status: requires_status_crosscheck
+    safety_status: blocked
+    licence: not_stated_on_asset_link
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: monthly
+    local_path: "dataset/dae/registered_agricultural_pesticides_ptac81.pdf"
+    sha256: "b7a30b4faf9cd52450b03cf7bd7f78aca717294f130e45728494a04224bbd4e3"
+    pages: 189
+    notes: "Do not recommend products until cancellation and current registration notices are applied as a dated overlay."
+
+  - id: bbs_agri_yearbook
+    publisher: Bangladesh Bureau of Statistics
+    title: Year Book of Agricultural Statistics of Bangladesh
+    url: "https://bbs.gov.bd/site/page/3e838eb6-30a2-4709-be85-40484b0c16c6/"
+    download_url: "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-bbs/2024/12/58f325576f9a47cc91e7d227e336e40f.pdf"
+    asset_type: pdf
+    version: "2024"
+    published: "2025-06"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [yield, production, area, labor, statistics]
+    download_status: downloaded
+    curation_status: curated_subset
+    safety_status: approved_with_quarantine
+    licence: not_stated_on_landing_page
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: quarterly
+    local_path: "dataset/bbs/agricultural_statistics_yearbook_2024.pdf"
+    sha256: "b9dbe231d0b8bab0a3080aad1795028120287e4d3844429cd229e8475f2833aa"
+    pages: 696
+    available_newer_editions:
+      - year: 2025
+        published: "2026-06-30"
+        download_url: "https://objectstorage.ap-dcc-gazipur-1.oraclecloud15.com/n/axvjbnqprylg/b/V2Ministry/o/office-bbs/2026/5/cfb80ec8-1c7f-4632-8a59-7649b6ac7ffe.pdf"
+    quarantine_ids: [bbs_2024_carrot_table_3_9_29]
+    notes: "2024 remains the local pinned edition. Carrot Table 3.9.29 is blocked and must not be corrected or ingested."
+
+  - id: open_meteo
+    publisher: Open-Meteo
+    title: Forecast and Historical Weather APIs
+    url: "https://open-meteo.com/en/docs"
+    secondary_url: "https://open-meteo.com/en/docs/historical-weather-api"
+    asset_type: api
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: en
+    geography: global
+    topics: [forecast, precipitation, temperature, et0, historical_reanalysis]
+    download_status: live_api
+    curation_status: approved_for_curation
+    safety_status: provisional
+    licence: usage_tier_dependent
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: monthly
+    notes: "Store request/model/dataset/window/timezone/units and separate forecasts from historical baselines."
+
+  - id: project_demo_assumptions
+    publisher: Delulu Developers
+    title: Editable financial assumptions for the AgriSense demo
+    asset_type: internal_curated_csv
+    version: "1.0.0"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [price, cost, financial_assumption]
+    download_status: not_applicable
+    curation_status: curated_subset
+    safety_status: provisional
+    licence: project_internal
+    redistribution_allowed: true
+    machine_readable: true
+    update_check: before_each_demo
+    local_path: "kb/curated/cost_baseline.csv"
+    notes: "Not observed market data. Use only with explicit allow_assumptions=true and expose every editable value."
+
+  - id: gadm_bgd_4_1
+    publisher: GADM
+    title: GADM Bangladesh Administrative Areas
+    url: "https://gadm.org/download_country.html"
+    licence_url: "https://gadm.org/license.html"
+    asset_type: dataset
+    version: "4.1"
+    accessed_at: "2026-07-24"
+    language: en
+    geography: Bangladesh
+    topics: [administrative_boundaries]
+    download_status: not_downloaded
+    curation_status: reference_only
+    safety_status: licence_restricted
+    licence: academic_and_noncommercial_only
+    redistribution_allowed: false
+    machine_readable: true
+    update_check: annual
+    notes: "Prefer HDX COD."
+
+  - id: plantwise_kb
+    publisher: CABI
+    title: PlantwisePlus Knowledge Bank
+    url: "https://plantwiseplusknowledgebank.org/"
+    licence_url: "https://plantwiseplustoolkit.org/terms/"
+    asset_type: knowledge_portal
+    version: rolling
+    accessed_at: "2026-07-24"
+    language: multilingual
+    geography: global
+    topics: [pest, disease, integrated_pest_management]
+    download_status: not_downloaded
+    curation_status: reference_only
+    safety_status: licence_restricted
+    licence: mixed_by_content_type
+    redistribution_allowed: false
+    machine_readable: partial
+    update_check: quarterly
+    notes: "Create an individual source entry for any future ingestible factsheet."

@@ -1,0 +1,53 @@
+schema_version: "1.0.0"
+built_for: "AgriSense winter/dry-season demo slice"
+reviewed_at: "2026-07-24"
+files:
+  - path: kb/curated/admin_aliases.csv
+    sha256: "4238e78228aae9347a2c6b1934754a808ae1ac34f62cf5e7a2c0ae0c02c46b8d"
+    row_count: 6
+    required_columns: [adm_level, pcode, alias, language, source_id, source_locator, curation_status]
+  - path: kb/curated/admin_aez_crosswalk.csv
+    sha256: "730edab84b1c73901702e7830c72a8b4b2bf781a9522ed7d9f602a524dbb497f"
+    row_count: 3
+    required_columns: [adm3_pcode, aez_id, resolution, source_id, source_locator, curation_status]
+  - path: kb/curated/crop_variety.csv
+    sha256: "83ee1082a805da9beb2f1732ff3ecffb428b3d01a45b6b770dbf068cbb8b1839"
+    row_count: 3
+    required_columns: [crop_id, variety_id, season, duration_base_days, source_id, source_locator, curation_status]
+  - path: kb/curated/crop_soil_suitability.csv
+    sha256: "b5e1378af024a44fd4f26658725c9733cc884bfa6d71a1f379809361eb1e143e"
+    row_count: 11
+    required_columns: [crop_id, soil_class, drainage_condition, suitability_class, source_id, source_locator, curation_status]
+  - path: kb/curated/crop_water_stage.csv
+    sha256: "184f3d3d48112c1ad0dfcde9680d2e3ebf67542b89f55a228559fd54ddeb8476"
+    row_count: 12
+    required_columns: [crop_id, stage, duration_days, kc_start, kc_end, source_id, source_locator, curation_status, safety_status]
+  - path: kb/curated/soil_water_profile.csv
+    sha256: "ede8a315151c650c418239852523f889a2439d82e5bf3a98ac46fec27881375e"
+    row_count: 3
+    required_columns: [soil_class, total_available_moisture_mm_per_m, max_rain_infiltration_mm_per_day, source_id, source_locator, curation_status, safety_status]
+  - path: kb/curated/crop_calendar.csv
+    sha256: "316f0baf67bb23719a109d30a6e4657bd6e7276e97158a697b57dcfc19da4f4f"
+    row_count: 4
+    required_columns: [crop_id, season, sow_start_month, harvest_start_month, source_id, source_locator, precision_source_id, precision_source_locator, curation_status]
+  - path: kb/curated/fertilizer_recommendation.csv
+    sha256: "ac4ec2bddb2cd945a0ce4c625a112fd06c20bf4c4a4b81820ab847cd9d7e3189"
+    row_count: 36
+    required_columns: [crop_id, variety_id, soil_test_class, yield_target_t_ha, nutrient, rate_min, rate_max, canonical_unit, source_id, source_locator, curation_status]
+  - path: kb/curated/yield_baseline.csv
+    sha256: "b8c6253de23a3e49094753de2be9679a57b7777e0d98311dab8b0f8a0832f61f"
+    row_count: 4
+    required_columns: [crop_id, stat_year, area_acres, production_mt, canonical_yield_t_ha, source_id, source_locator, curation_status]
+  - path: kb/curated/cost_baseline.csv
+    sha256: "1041ca4b979318aef643887668626ec60edd5ac3589d3c7f1d2b6f3a2e4be098"
+    row_count: 24
+    required_columns: [crop_id, item_type, item, cost_per_acre_bdt, editable, source_id, source_locator, curation_status, safety_status]
+  - path: kb/curated/rag_chunks.jsonl
+    sha256: "72bf4229456383904f6b14a656b0c07d5dc64e3c95b3febb605547187865d754"
+    row_count: 7
+  - path: kb/curated/source_precedence.yaml
+    sha256: "07b30590c2b0dd72b62052521134f2056e2222ce5ac6a247e984c376b9669b9c"
+  - path: kb/curated/water_assumptions.yaml
+    sha256: "b75492e154df5d5f65b4b709232a1572166116ec7ef3e6d2a8fbb0fbe63bcbd8"
+  - path: kb/curated/data_quality_quarantine.yaml
+    sha256: "32da1efd41431cdcaec8fcf4035b4312e66789a33d49be6d6c2f805a4a01bc29"

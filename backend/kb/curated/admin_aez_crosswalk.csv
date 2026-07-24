@@ -1,0 +1,4 @@
+adm3_pcode,adm3_name_en,aez_id,resolution,review_status,coverage_note,source_id,source_locator,curation_status,confidence
+BD50100020,Bogura Sadar,3,admin_candidate,reviewed,"Official profile reports 7400 ha in AEZ 3; not a point-in-polygon result.",dae_bogura_sadar_profile,"Static page section: কৃষি বিষয়ক তথ্য, কৃষি পরিবেশ অঞ্চল",human_reviewed,medium
+BD50100020,Bogura Sadar,25,admin_candidate,reviewed,"Official profile reports a combined 10265 ha for AEZ 25 and 27; the area is deliberately not split or duplicated.",dae_bogura_sadar_profile,"Static page section: কৃষি বিষয়ক তথ্য, কৃষি পরিবেশ অঞ্চল",human_reviewed,medium
+BD50100020,Bogura Sadar,27,admin_candidate,reviewed,"Official profile reports a combined 10265 ha for AEZ 25 and 27; the area is deliberately not split or duplicated.",dae_bogura_sadar_profile,"Static page section: কৃষি বিষয়ক তথ্য, কৃষি পরিবেশ অঞ্চল",human_reviewed,medium

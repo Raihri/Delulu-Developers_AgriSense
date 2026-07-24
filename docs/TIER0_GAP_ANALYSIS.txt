@@ -1,0 +1,370 @@
+AGRISENSE TIER 0 GAP ANALYSIS
+Audit date: 2026-07-25
+
+AUDIT BASIS
+
+This report compares:
+1. Tier 0 on page 3 of docs/Agentic_AI_Hackathon_Final_Question.pdf
+2. The target and checkpoint claims in docs/ARCHITECTURE.md
+3. The current backend, frontend, curated data, migrations and tests
+
+The PDF requires one complete path from a short conversation to a grounded,
+explained and costed season plan for one farm. All eight capabilities must work
+end to end.
+
+EXECUTIVE VERDICT
+
+AgriSense is not Tier-0 complete yet.
+
+It is a strong, fail-closed foundation with working conversational intake, real
+weather retrieval, curated Supabase tables, financial formulas, limited season
+events, RAG retrieval, persistence and a visible trace interface.
+
+It still does not produce:
+- at least three same-season crops ranked using actual weather values
+- one farmer-chosen crop
+- a complete dated land-preparation-to-harvest calendar
+- a costed plan in the normal conversation-to-plan flow
+- per-recommendation explanations grounded in retrieved facts
+- raw-enough trace evidence to reproduce every displayed number
+
+Strict status: 1 PASS, 6 PARTIAL, 1 MISSING.
+
+TIER 0 STATUS
+
+1. CONVERSATIONAL INTAKE - PASS
+
+Implemented:
+- Gemini structured extraction
+- controlled enums and evidence quotes
+- progressive clarification
+- live browser location and Google Maps
+- compact Supabase context across turns
+
+Still needed:
+- pass the collected budget into planning
+- link intake and plan sessions
+- collect water reliability/capacity promised by the architecture
+
+2. LIVE WEATHER GROUNDING - PARTIAL
+
+Implemented:
+- real Open-Meteo request
+- rainfall, temperature and ET0 returned and displayed
+
+Missing:
+- the recommender receives only weather_available true/false
+- actual rainfall and temperature do not change recommendation results
+- no weather score, risk, sowing decision or operation overlay
+
+3. CROP RECOMMENDATION - MISSING
+
+The backend does not rank crops. It returns transparent assessments with
+ranking paused.
+
+Missing:
+- at least three candidates in one season
+- rank position
+- combined suitability
+- weather suitability
+- water need
+- risk level
+- rough profit in the normal assessment response
+- a winner or chosen crop
+
+Current season coverage:
+- Boro: Boro rice only
+- Rabi: maize and lentil
+- Kharif 1: none
+- Kharif 2: none
+
+4. SEASON PLAN - PARTIAL
+
+Implemented:
+- sow/transplant and harvest month windows
+- fertilizer events
+- two maize nitrogen DAS ranges converted to dates when sowing date is supplied
+
+Missing:
+- chosen-crop flow
+- land preparation
+- dated sow/transplant action
+- irrigation quantity and timing
+- weed checkpoints
+- pest checkpoints
+- crop stages
+- dated harvest
+- weather-aware event shifts
+
+5. FINANCIAL PROJECTION - PARTIAL
+
+Implemented:
+- itemized assumptions
+- expected yield
+- revenue
+- net profit
+- ROI
+- break-even yield and price
+- Decimal-based tested math
+
+Missing:
+- finance is off by default
+- collected farmer budget is not used
+- frontend cost/yield/price values are not editable
+- no finance for unsupported seasons
+- final finance is not limited to one chosen crop
+
+6. EXPLAINED REASONING - PARTIAL
+
+Implemented:
+- farm evidence cards
+- source lines
+- missing and unassessed explanations
+
+Missing:
+- an actual ranked recommendation
+- per-output provenance
+- weather/source/formula links for each recommendation
+- architecture's based_on narrative renderer
+
+7. KNOWLEDGE BASE WITH RAG - PARTIAL
+
+Implemented:
+- Supabase structured KB
+- pgvector RPC
+- five cited RAG chunks
+- bilingual retrieval tests
+
+Missing:
+- plan preview never performs RAG retrieval
+- intake retrieval is displayed but not consumed by the plan
+- no RAG trace
+- deterministic hashed vectors are not a semantic multilingual model
+- no relevance/no-answer threshold
+
+8. VISIBLE AGENT TRACE - PARTIAL
+
+Implemented:
+- persisted trace records
+- frontend expandable trace view
+- sanitized parameters and compact outputs
+
+Missing:
+- actual bounded weather values used by recommendations
+- external_api, rag_retrieval and computation trace types
+- Gemini/RAG/standalone endpoint trace coverage
+- duration and failure records
+- raw-output hash/reference
+- one-to-one trace ID on every displayed number
+
+DECISIVE BLOCKERS
+
+P0 - NO SEASON HAS THREE COMPARABLE CROPS
+
+The current catalog cannot satisfy the crop-ranking requirement. The shortest
+safe path is to freeze the demo to Rabi and curate one additional Rabi crop,
+such as wheat, across calendar, soil, water, yield, cost, fertilizer and
+operation tables.
+
+P0 - WEATHER IS FETCHED BUT NOT USED AS WEATHER
+
+backend/agent/controller.py fetches the daily series, but passes only a Boolean
+weather_available flag to backend/tools/recommend.py. Pass the daily values,
+calculate sourced risk/suitability, and attach exact evidence.
+
+P0 - THERE IS NO RANKING
+
+Every crop returns not_ranked_until_all_limiting_factors_are_available. Complete
+a narrow, reviewed same-season data slice and retain the fail-closed gate for
+unsupported cases.
+
+P0 - THE SEASON PLAN IS INCOMPLETE
+
+Add a structured crop-operation table and one complete chosen-crop template
+covering land preparation, sowing, fertilizer, irrigation, weed, pest and
+harvest events with reviewed relative timing.
+
+P0 - THE CORE FLOW IS NOT COSTED
+
+Ask for finance-assumption consent in the conversation, pass the farmer budget,
+allow edits, recompute in the backend, and return finance for the selected crop.
+
+P0 - RAG DOES NOT GROUND THE PLAN
+
+Keep exact numbers in structured tables. Use RAG for cited explanatory guidance,
+attach chunk IDs to advice, apply a relevance threshold, and trace retrieval.
+
+P0 - TRACE OUTPUT IS TOO SUMMARIZED
+
+Store/display the exact bounded values used, tool type, formula/source version,
+duration, status and a trace ID on every output number.
+
+ARCHITECTURE COMMITMENTS NOT IMPLEMENTED
+
+Agent and session:
+- tool-selecting agent loop
+- one shared intake-to-plan session
+- authenticated farmer ownership
+- stored message history
+- streaming turns
+
+Intake:
+- water reliability
+- numeric irrigation capacity
+- budget basis
+- original area units/local bigha handling
+- automatic current-season prefill/confirmation
+- ambiguous text-location geocoding and selection
+
+Weather:
+- 16-day preview forecast
+- 1991-2020 historical baseline
+- effective rainfall in preview
+- GDD and threshold features
+- fetched/expiry metadata
+- cache and Open-Meteo retries
+- use by ranking and scheduling
+
+Geospatial/soil:
+- point-resolvable AEZ polygons
+- AEZ fallback beyond Bogura Sadar
+- plot/local soil evidence
+- crop temperature tolerance table
+- Boro soil-suitability rows
+
+Water/ranking:
+- water-balance integration in plan preview
+- initial root-zone depletion input
+- irrigation amount/timing/efficiency
+- locally reviewed Kc/root-depth inputs
+- paddy-specific water inputs
+- limiting-factor score
+- weather and season scores
+- at least three same-window crops
+- profit/risk preference controls
+
+Season plan:
+- crop-operation/phenology table
+- chosen-crop confirmation
+- sowing anchor
+- full DAS/GDD engine
+- forecast overlay
+- complete operation list and dated harvest
+
+Finance:
+- budget use
+- editable frontend assumptions
+- per-acre/total controls
+- input-level formula trace
+- dated observed input/farmgate price records
+
+Explanation:
+- ProvenanceRecord model
+- based_on data for every output
+- constrained narrative/template renderer
+- output-level confidence and assumption labels
+
+RAG:
+- multilingual semantic embedding model
+- no-answer threshold
+- plan-controller retrieval
+- RAG trace
+- more than five reviewed chunks/two topics
+- reviewed BARI legacy-Bengali content
+- broader BRRI/AIS content
+
+Trace:
+- automatic wrapper for every call
+- Gemini/RAG trace
+- standalone endpoint trace
+- raw payload reference/hash
+- duration, hierarchy, redactions and failures
+- one-to-one trace coverage test
+
+Acceptance gates:
+- weather dates/units/freshness
+- three fully assessable same-window crops
+- fertilizer geographic context
+- complete season operations
+- one-to-one provenance/trace coverage
+
+DOCUMENTATION MISMATCHES
+
+docs/ARCHITECTURE.md:
+- mixes target design and current runtime
+- says the browser trace panel is still next, but it now exists
+- uses Kharif 2 in an example, but no Kharif 2 crop is curated
+- describes 16-day plus historical weather, but code uses seven days only
+- describes editable finance, but UI has only an assumption checkbox
+
+README.md:
+- needs an explicit eight-capability Tier 0 status matrix
+- needs a clear 1-pass/6-partial/1-missing statement
+- needs a real/reviewed/provisional/mock data table
+- needs a warning that no season currently has three candidates
+- needs the exact supported golden scenario
+
+docs/DEMO_RUNBOOK.md:
+- uses the old form demo, not the required conversation path
+- says weather is missing, but weather is now fetched
+- expected trace counts are stale
+- sample payload omits water availability and target season
+- demonstrates no ranking, proving Tier 0 capability 3 remains incomplete
+
+Frontend:
+- always labels the page as three candidates
+- leaves maize selected when Kharif returns zero candidates
+- shows misleading no-operation/no-finance messages in unsupported seasons
+
+WHAT IS ALREADY GOOD
+
+Do not rebuild:
+- Gemini intake and clarification
+- live/map location
+- HDX ADM3 resolution
+- Open-Meteo call
+- Supabase migrations/seed
+- registry/hashes/quarantine validation
+- structured agronomic tables
+- financial formula engine
+- fail-closed safety rules
+- compact persistence
+- cited RAG endpoint
+- trace UI skeleton
+- backend tests
+- frontend type correctness
+
+At audit time:
+- all backend tests pass
+- kb.validate returns zero errors and warnings
+- frontend tsc --noEmit passes
+
+SHORTEST TIER 0 COMPLETION ORDER
+
+1. Freeze demo to Rabi and one golden farm.
+2. Curate one additional Rabi crop so three crops are comparable.
+3. Feed actual weather values into suitability and risk.
+4. Integrate non-paddy water balance with explicit inputs.
+5. Return a deterministic top-three ranking.
+6. Ask the farmer to choose a crop.
+7. Build one complete dated operation template.
+8. Carry finance consent, budget and editable assumptions into the plan.
+9. Retrieve and attach RAG guidance.
+10. Make every output number traceable to exact values/formula.
+11. Correct README, architecture status and demo runbook.
+
+TIER 0 ACCEPTANCE FLOW
+
+The judge must be able to:
+1. Start with a vague message.
+2. Answer only missing-field questions.
+3. See a real farm-location forecast.
+4. See three same-season crops ranked.
+5. Inspect suitability, water need, risk and profit for each.
+6. Choose one crop.
+7. Receive a complete dated plan.
+8. Inspect costs, yield, revenue, profit, ROI and break-even.
+9. Read explanations naming farm inputs, weather and sources.
+10. Reproduce every number from visible tool values or formula inputs.
+
+Until this passes, call AgriSense a partial Tier-0 prototype.

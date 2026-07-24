@@ -1,0 +1,27 @@
+# One container that runs BOTH the backend (FastAPI) and frontend (Next.js).
+#
+#   1. cp backend/.env.example backend/.env   # fill Supabase (+ optional Gemini)
+#   2. docker compose up --build
+#
+# Then open http://localhost:3000 (frontend) — it proxies to the backend at
+# http://localhost:8000 inside the same container.
+#
+# First-time database seeding (needs the local dataset/, mounted read-only):
+#   docker compose run --rm app python -m kb.migrate
+#   docker compose run --rm app python -m kb.build
+# (run those with:  working_dir /app/backend, e.g.
+#   docker compose run --rm -w /app/backend app python -m kb.build )
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    ports:
+      - "3000:3000"   # frontend
+      - "8000:8000"   # backend API
+    volumes:
+      # Read-only, only used by kb.migrate / kb.build / kb.validate.
+      # The running app does not read dataset/. Safe to leave even if empty.
+      - ./dataset:/app/dataset:ro

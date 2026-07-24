@@ -1,0 +1,13 @@
+crop_id,parameter_basis,stage,stage_order,duration_days,kc_start,kc_end,root_depth_start_m,root_depth_end_m,local_observation,source_id,source_locator,curation_status,safety_status,confidence
+maize,CROPWAT provisional seed,initial,1,20,0.30,0.30,0.30,0.30,false,fao_cropwat,dataset/fao_cropwat/crops/MAIZE.CRO lines 2-4,human_reviewed,provisional,low
+maize,CROPWAT provisional seed,development,2,35,0.30,1.20,0.30,1.00,false,fao_cropwat,dataset/fao_cropwat/crops/MAIZE.CRO lines 2-4,human_reviewed,provisional,low
+maize,CROPWAT provisional seed,mid,3,40,1.20,1.20,1.00,1.00,false,fao_cropwat,dataset/fao_cropwat/crops/MAIZE.CRO lines 2-4,human_reviewed,provisional,low
+maize,CROPWAT provisional seed,late,4,30,1.20,0.35,1.00,1.00,false,fao_cropwat,dataset/fao_cropwat/crops/MAIZE.CRO lines 2-4,human_reviewed,provisional,low
+lentil,CROPWAT Pulses provisional proxy,initial,1,20,0.40,0.40,0.30,0.30,false,fao_cropwat,dataset/fao_cropwat/crops/PULSES.CRO lines 2-4,human_reviewed,provisional,low
+lentil,CROPWAT Pulses provisional proxy,development,2,30,0.40,1.15,0.30,1.00,false,fao_cropwat,dataset/fao_cropwat/crops/PULSES.CRO lines 2-4,human_reviewed,provisional,low
+lentil,CROPWAT Pulses provisional proxy,mid,3,40,1.15,1.15,1.00,1.00,false,fao_cropwat,dataset/fao_cropwat/crops/PULSES.CRO lines 2-4,human_reviewed,provisional,low
+lentil,CROPWAT Pulses provisional proxy,late,4,20,1.15,0.35,1.00,1.00,false,fao_cropwat,dataset/fao_cropwat/crops/PULSES.CRO lines 2-4,human_reviewed,provisional,low
+wheat,CROPWAT provisional seed,initial,1,30,0.30,0.30,0.30,0.30,false,fao_cropwat,dataset/fao_cropwat/crops/WHEAT.CRO lines 2-4,human_reviewed,provisional,low
+wheat,CROPWAT provisional seed,development,2,30,0.30,1.15,0.30,1.20,false,fao_cropwat,dataset/fao_cropwat/crops/WHEAT.CRO lines 2-4,human_reviewed,provisional,low
+wheat,CROPWAT provisional seed,mid,3,40,1.15,1.15,1.20,1.20,false,fao_cropwat,dataset/fao_cropwat/crops/WHEAT.CRO lines 2-4,human_reviewed,provisional,low
+wheat,CROPWAT provisional seed,late,4,30,1.15,0.30,1.20,1.20,false,fao_cropwat,dataset/fao_cropwat/crops/WHEAT.CRO lines 2-4,human_reviewed,provisional,low

@@ -1,0 +1,4 @@
+soil_class,profile_name,total_available_moisture_mm_per_m,max_rain_infiltration_mm_per_day,local_observation,source_id,source_locator,curation_status,safety_status,confidence
+sandy_loam,CROPWAT Light soil seed,60,40,false,fao_cropwat,dataset/fao_cropwat/soils/LIGHT.SOI lines 2-4,human_reviewed,provisional,low
+loam,CROPWAT Medium soil seed,290,40,false,fao_cropwat,dataset/fao_cropwat/soils/MEDIUM.SOI lines 2-4,human_reviewed,provisional,low
+clay,CROPWAT Heavy soil seed,200,40,false,fao_cropwat,dataset/fao_cropwat/soils/HEAVY.SOI lines 2-4,human_reviewed,provisional,low
