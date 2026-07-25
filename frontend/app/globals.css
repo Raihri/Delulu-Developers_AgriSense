@@ -1061,6 +1061,75 @@ main { min-height: 100vh; }
 }
 .crop-card dt { color: var(--muted); font-size: 0.62rem; }
 .crop-card dd { margin: 0; font-size: 0.61rem; font-weight: 750; text-align: right; }
+.recommendation-heading-badges { display: grid; justify-items: end; gap: 6px; }
+.recommendation-evidence-layout {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.recommendation-reason-panel,
+.recommendation-rag-panel {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfcf8;
+}
+.recommendation-rag-panel {
+  border-color: #b8cfbc;
+  background: linear-gradient(145deg, #f7fbf5, #edf5ea);
+}
+.recommendation-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.recommendation-panel-head h2 {
+  margin: 4px 0 0;
+  color: var(--forest-dark);
+  font-family: Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+.recommendation-panel-head > span {
+  flex: none;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--forest);
+  background: var(--mint);
+  font-size: .58rem;
+  font-weight: 850;
+}
+.recommendation-summary { margin: 14px 0 11px; color: #405249; font-size: .69rem; line-height: 1.55; }
+.recommendation-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+.recommendation-facts div { padding: 6px 0; display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid #e5ebe3; }
+.recommendation-facts dt { color: var(--muted); font-size: .6rem; }
+.recommendation-facts dd { margin: 0; font-size: .61rem; font-weight: 780; text-align: right; }
+.recommendation-formula { margin-top: 11px; padding: 10px; display: grid; gap: 2px; border-radius: 9px; color: white; background: var(--forest-dark); }
+.recommendation-formula span { color: rgba(255,255,255,.68); font-size: .56rem; }
+.recommendation-formula strong { font-size: .67rem; }
+.recommendation-formula small { color: rgba(255,255,255,.64); font-size: .54rem; }
+.recommendation-rag-list { margin-top: 12px; display: grid; gap: 8px; }
+.recommendation-rag-list article { padding: 11px; border: 1px solid #d9e5d8; border-radius: 10px; background: var(--paper); }
+.recommendation-rag-list article > div { display: flex; align-items: center; gap: 7px; }
+.recommendation-rag-list article > div span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; color: white; background: var(--forest); font-size: .54rem; font-weight: 850; }
+.recommendation-rag-list article > div strong { font-size: .66rem; }
+.recommendation-rag-list article > p { margin: 8px 0 0; color: #405249; font-size: .66rem; line-height: 1.5; }
+.recommendation-rag-empty { margin-top: 12px; padding: 18px; border: 1px dashed #9fbea6; border-radius: 10px; background: rgba(255,255,255,.62); text-align: center; }
+.recommendation-rag-empty strong { color: var(--forest-dark); font-size: .72rem; }
+.recommendation-rag-empty p { margin: 5px 0 0; color: var(--muted); font-size: .64rem; }
+.recommendation-limits { margin: 12px 0; border: 1px solid #e5c98f; border-radius: 10px; background: var(--amber-bg); }
+.recommendation-limits summary { padding: 10px 12px; color: #704c16; font-size: .65rem; font-weight: 850; }
+.recommendation-limits > div { padding: 0 12px 10px; }
+.recommendation-limits p { margin: 5px 0; color: #6c5a3d; font-size: .62rem; }
 .crop-selector {
   min-width: 130px;
   padding: 8px 30px 8px 10px;
@@ -1519,6 +1588,7 @@ footer strong { color: var(--forest); }
   .crop-grid { grid-template-columns: 1fr; }
   .finance-metrics { grid-template-columns: repeat(2, 1fr); }
   .plan-why-grid, .scenario-impact-grid { grid-template-columns: 1fr; }
+  .recommendation-evidence-layout { grid-template-columns: 1fr; }
   .project-plant-health-cta { width: min(100% - 26px, 720px); }
 }
 @media (max-width: 590px) {
@@ -1534,6 +1604,7 @@ footer strong { color: var(--forest); }
   .answer-options { margin-left: 0; }
   .intake-actions { align-items: stretch; flex-direction: column; }
   .weather-summary, .finance-metrics, .reason-grid, .limit-grid { grid-template-columns: 1fr; }
+  .recommendation-facts { grid-template-columns: 1fr; }
   .forecast-strip { grid-template-columns: repeat(2, 1fr); }
   .reason-list article { grid-template-columns: 1fr; }
   .reason-list .source-line { grid-column: 1; }

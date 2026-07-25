@@ -181,15 +181,13 @@ const emptyFinancialCosts = (): Record<FinancialCostItem, string> => ({
   irrigation: "",
   other: "",
 });
-const capabilityNames = [
-  ["Conversational intake", "Farm context"],
-  ["Live weather", "Real forecast"],
-  ["Crop recommendation", "Rabi candidates"],
-  ["Season plan", "Dated operations"],
-  ["Financial projection", "Cost & profit"],
-  ["Explained reasoning", "Inputs & limits"],
-  ["Knowledge base + RAG", "Cited retrieval"],
-  ["Visible agent trace", "Tool evidence"],
+const capabilityNavigation = [
+  { id: 1, name: "Conversational intake", detail: "Farm context" },
+  { id: 2, name: "Live weather", detail: "Real forecast" },
+  { id: 3, name: "Crop recommendation", detail: "Ranking · reasoning · RAG" },
+  { id: 4, name: "Season plan", detail: "Dated operations" },
+  { id: 5, name: "Financial projection", detail: "Cost & profit" },
+  { id: 8, name: "Visible agent trace", detail: "Tool evidence" },
 ] as const;
 const initialLocationOptions: IntakeOption[] = [
   { id: "location_live", label: "◎ Live location", action: "live_location" },
@@ -475,6 +473,14 @@ export default function Home() {
       setFarmAccessIdInput(stored);
     }
   }, []);
+
+  useEffect(() => {
+    // During hot reload, move anyone who was viewing the retired standalone
+    // Reasoning/RAG tabs into their new combined recommendation view.
+    if (activeCapability === 6 || activeCapability === 7) {
+      setActiveCapability(3);
+    }
+  }, [activeCapability]);
 
   useEffect(() => {
     if (!ranking || !selectedCrop) return;
@@ -1575,6 +1581,19 @@ export default function Home() {
     if (activeCapability === 3) {
       const recommendedCrop = ranking?.recommended_crop_id ?? null;
       const chosenCrop = ranking?.chosen_crop_id ?? null;
+      const selectedRankedRow = ranking?.ranked.find(
+        (row) => row.crop_id === selectedCrop,
+      );
+      const selectedGrounding =
+        chosenCrop === selectedCrop ? record(record(ranking?.chosen_plan).grounding) : {};
+      const selectedGroundingChunks = rows(selectedGrounding.chunks).filter(
+        (item, index, all) =>
+          all.findIndex(
+            (candidate) =>
+              `${text(candidate.source_id)}|${text(candidate.source_locator)}|${text(candidate.text)}` ===
+              `${text(item.source_id)}|${text(item.source_locator)}|${text(item.text)}`,
+          ) === index,
+      );
       return (
         <section className="workspace-panel">
           <div className="panel-heading">
@@ -1593,7 +1612,10 @@ export default function Home() {
                   : "Compare soil fit, water status, calendar evidence and provisional economics."}
               </p>
             </div>
-            <span className="count-badge">{plan?.assessments.length ?? 0} assessed</span>
+            <div className="recommendation-heading-badges">
+              <span className="count-badge">{plan?.assessments.length ?? 0} assessed</span>
+              <span className="mode-badge">Ranking + why + sources</span>
+            </div>
           </div>
           {ranking?.ranked?.length ? (
             <div className="ranked-list">
@@ -1720,6 +1742,104 @@ export default function Home() {
               );
             })}
           </div>
+          <div className="recommendation-evidence-layout">
+            <section className="recommendation-reason-panel">
+              <div className="recommendation-panel-head">
+                <div>
+                  <span className="card-label">EXPLAINED REASONING</span>
+                  <h2>
+                    {selectedCrop
+                      ? `Why ${cropNames[selectedCrop] ?? label(selectedCrop)} is ranked here`
+                      : "Select a crop to see why"}
+                  </h2>
+                </div>
+                <span>{selectedRankedRow ? `Rank #${selectedRankedRow.rank}` : "Waiting"}</span>
+              </div>
+              {selectedRankedRow ? (
+                <>
+                  <p className="recommendation-summary">
+                    This position combines a {fitMeaning(selectedRankedRow.soil_suitability_class).toLowerCase()} soil match,
+                    {" "}{fitMeaning(selectedRankedRow.water_class).toLowerCase()} forecast water conditions
+                    and roughly {money(selectedRankedRow.rough_profit_bdt)} net profit.
+                    {selectedRankedRow.fits_budget === true
+                      ? " The estimated cost stays within the farmer’s budget."
+                      : selectedRankedRow.fits_budget === false
+                        ? " The estimated cost is above the farmer’s budget."
+                        : ""}
+                  </p>
+                  <dl className="recommendation-facts">
+                    <div><dt>Farmer soil</dt><dd>{label(planningProfile.soil_class)}</dd></div>
+                    <div><dt>Drainage</dt><dd>{label(planningProfile.drainage_condition)}</dd></div>
+                    <div><dt>Water supply</dt><dd>{label(planningProfile.water_availability)}</dd></div>
+                    <div><dt>Farm area</dt><dd>{text(planningProfile.area_acres)} acre</dd></div>
+                    <div><dt>Budget</dt><dd>{money(planningProfile.budget_bdt)}</dd></div>
+                    <div><dt>Season</dt><dd>{label(planningProfile.target_season)}</dd></div>
+                  </dl>
+                  <div className="recommendation-formula">
+                    <span>How the score is weighted</span>
+                    <strong>Soil 40% · Water 40% · Rough profit 20%</strong>
+                    <small>{text(ranking?.policy)}</small>
+                  </div>
+                  {selectedAssessment ? (
+                    <SourceLine item={record(selectedAssessment.soil_evidence)} />
+                  ) : null}
+                </>
+              ) : (
+                <p className="empty-copy">
+                  Generate the three-crop ranking, then select a crop to inspect its reasoning.
+                </p>
+              )}
+            </section>
+
+            <section className="recommendation-rag-panel">
+              <div className="recommendation-panel-head">
+                <div>
+                  <span className="card-label">KNOWLEDGE BASE + RAG</span>
+                  <h2>Reviewed guidance beside the recommendation</h2>
+                </div>
+                <span>{selectedGroundingChunks.length} source{selectedGroundingChunks.length === 1 ? "" : "s"}</span>
+              </div>
+              {selectedGroundingChunks.length ? (
+                <div className="recommendation-rag-list">
+                  {selectedGroundingChunks.map((item, index) => (
+                    <article key={`${text(item.source_id)}-${text(item.source_locator)}-${index}`}>
+                      <div>
+                        <span>{String(index + 1).padStart(2, "0")}</span>
+                        <strong>{label(item.topic)}</strong>
+                      </div>
+                      <p>{text(item.text)}</p>
+                      <SourceLine item={item} />
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="recommendation-rag-empty">
+                  <strong>Confirm this crop to retrieve its reviewed guidance</strong>
+                  <p>
+                    RAG evidence is attached only after the farmer chooses a crop,
+                    so advice for another candidate is never shown by mistake.
+                  </p>
+                </div>
+              )}
+            </section>
+          </div>
+          {(plan?.missing.length || plan?.unassessed.length) ? (
+            <details className="recommendation-limits">
+              <summary>
+                Remaining limits · {plan?.missing.length ?? 0} missing · {plan?.unassessed.length ?? 0} unassessed
+              </summary>
+              <div>
+                {plan?.missing.map((item) => (
+                  <p key={text(item.field)}><strong>{label(item.field)}</strong> · {text(item.reason)}</p>
+                ))}
+                {plan?.unassessed.map((item) => (
+                  <p key={`${text(item.crop_id)}-${text(item.factor)}`}>
+                    <strong>{cropNames[text(item.crop_id)] ?? label(item.crop_id)} · {label(item.factor)}</strong> · {text(item.reason)}
+                  </p>
+                ))}
+              </div>
+            </details>
+          ) : null}
           <Notice tone={ranking?.ranked?.length ? "info" : "warning"}>
             {ranking?.ranked?.length
               ? "The order combines reviewed soil suitability, forecast-driven water stress and provisional profit. The farmer—not the agent—chooses which crop receives a dated plan."
@@ -2860,8 +2980,7 @@ export default function Home() {
             <div className="progress-track"><i style={{ width: `${completedCount * 12.5}%` }} /></div>
           </div>
           <nav aria-label="AgriSense capabilities">
-            {capabilityNames.map(([name, detail], index) => {
-              const step = index + 1;
+            {capabilityNavigation.map(({ id: step, name, detail }) => {
               const locked =
                 step === 3
                   ? !ranking
@@ -2877,7 +2996,7 @@ export default function Home() {
                   aria-current={activeCapability === step ? "step" : undefined}
                 >
                   <span className="rail-number">
-                    {completion[index] ? "✓" : String(step).padStart(2, "0")}
+                    {completion[step - 1] ? "✓" : String(step).padStart(2, "0")}
                   </span>
                   <span><strong>{name}</strong><small>{detail}</small></span>
                 </button>
