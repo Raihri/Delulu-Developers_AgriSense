@@ -1,0 +1,17 @@
+# Never send credentials to any Docker build context.
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env.local
+
+.git/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.venv/
+**/node_modules/
+**/.next/
+tmp/
+.DS_Store
+

@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from app import app, require_gemini, require_supabase
 from kb.build import seed_supabase
+from state.store import SupabaseStateStore
 from tests.fakes import FakeSupabaseClient
 from tests.intake_fakes import empty_raw, extracted, fake_extractor
 
@@ -121,6 +122,263 @@ def test_trusted_live_location_works_without_gemini_configuration() -> None:
         assert response.status_code == 200
         assert response.json()["mode"] == "trusted_location_update_v1"
         assert response.json()["model"] == "not_used"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_trusted_location_does_not_restore_or_overwrite_saved_profile() -> None:
+    fake = FakeSupabaseClient()
+    seed_supabase(fake, validate=False)
+    farmer_id = "32ec2f05-ed1c-49e5-9db2-9daa77d2c301"
+    saved_profile = {
+        "schema_version": "farmer_memory_v1",
+        "recognized": {
+            "area_acres": 99,
+            "soil_class": "clay",
+            "drainage_condition": "poorly_drained",
+            "water_availability": "rainfed",
+            "budget_bdt": 10_000,
+            "target_season": "rabi",
+            "crop_ids": ["maize"],
+        },
+        "conversation_history": [],
+        "last_intake_session_id": "old-session",
+    }
+    fake.table("farmer_profile").upsert(
+        {
+            "id": farmer_id,
+            "profile_json": saved_profile,
+        },
+        on_conflict="id",
+    ).execute()
+    app.dependency_overrides[require_supabase] = lambda: fake
+    app.dependency_overrides[require_gemini] = lambda: None
+    try:
+        response = TestClient(app).post(
+            "/intake/chat",
+            json={
+                "message": "I selected my farm location.",
+                "event": "location_selected",
+                "location": {
+                    "lat": 24.89539917,
+                    "lon": 89.35605547,
+                    "source": "live_location",
+                },
+                "farmer_id": farmer_id,
+                "remember_profile": True,
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["recognized"]["area_acres"] is None
+        assert body["recognized"]["soil_class"] is None
+        assert body["recognized"]["crop_ids"] == []
+        assert body["next_field"] == "farm_size_acres"
+        assert body["memory"]["status"] == "unchanged"
+        saved = (
+            fake.table("farmer_profile")
+            .select("profile_json")
+            .eq("id", farmer_id)
+            .limit(1)
+            .execute()
+            .data[0]["profile_json"]
+        )
+        assert saved == saved_profile
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_consented_farmer_memory_restores_context_across_new_sessions() -> None:
+    fake = FakeSupabaseClient()
+    seed_supabase(fake, validate=False)
+    farmer_id = "32ec2f05-ed1c-49e5-9db2-9daa77d2c301"
+    complete = empty_raw()
+    complete.update(
+        {
+            "farm_size_acres": extracted(1, "1 acre", "high"),
+            "soil_class": extracted("loam", "loam", "high"),
+            "drainage_condition": extracted("well_drained", "drains well", "high"),
+            "water_availability": extracted(
+                "irrigation_available", "irrigation", "high"
+            ),
+            "budget_bdt": extracted(30_000, "30000", "high"),
+            "target_season": extracted("rabi", "Rabi", "high"),
+            "next_field": None,
+            "follow_up_question": "Ready.",
+        }
+    )
+    app.dependency_overrides[require_supabase] = lambda: fake
+    app.dependency_overrides[require_gemini] = lambda: fake_extractor(complete)
+    client = TestClient(app)
+    location = {
+        "lat": 24.89539917,
+        "lon": 89.35605547,
+        "source": "live_location",
+    }
+    try:
+        first = client.post(
+            "/intake/chat",
+            json={
+                "message": (
+                    "My 1 acre loam farm drains well, has irrigation, a 30000 "
+                    "budget, and I want Rabi."
+                ),
+                "location": location,
+                "farmer_id": farmer_id,
+                "remember_profile": True,
+            },
+        )
+        assert first.status_code == 200
+        assert first.json()["memory"]["status"] == "saved"
+
+        app.dependency_overrides[require_gemini] = lambda: fake_extractor(empty_raw())
+        ordinary_message = client.post(
+            "/intake/chat",
+            json={
+                "message": "I want to start another farm.",
+                "farmer_id": farmer_id,
+                "remember_profile": True,
+            },
+        )
+        assert ordinary_message.status_code == 200
+        assert ordinary_message.json()["recognized"]["budget_bdt"] is None
+        preserved = client.get(f"/farmer/profile/{farmer_id}").json()["memory"]
+        assert preserved["recognized"]["budget_bdt"] == 30_000
+
+        app.dependency_overrides[require_gemini] = lambda: None
+        second = client.post(
+            "/intake/chat",
+            json={
+                "message": "Restore my saved farm profile.",
+                "event": "profile_restore",
+                "farmer_id": farmer_id,
+                "remember_profile": True,
+            },
+        )
+        assert second.status_code == 200
+        assert second.json()["mode"] == "consented_profile_restore_v1"
+        assert second.json()["memory"]["status"] == "restored"
+        assert second.json()["recognized"]["budget_bdt"] == 30_000
+        assert second.json()["plan_input"]["lat"] == round(location["lat"], 6)
+        loaded = client.get(f"/farmer/profile/{farmer_id}")
+        assert loaded.status_code == 200
+        assert loaded.json()["memory"]["conversation_history"]
+        assert loaded.json()["memory"]["location"]["source"] == "live_location"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_farm_profile_session_create_logout_boundary_and_login() -> None:
+    fake = FakeSupabaseClient()
+    seed_supabase(fake, validate=False)
+    app.dependency_overrides[require_supabase] = lambda: fake
+    client = TestClient(app)
+    try:
+        created = client.post(
+            "/farmer/profile/session",
+            json={"action": "create", "farm_name": "Shapla Family Farm"},
+        )
+        assert created.status_code == 200
+        body = created.json()
+        farmer_id = body["farmer_id"]
+        assert body["session_mode"] == "created"
+        assert body["authentication_boundary"] == "opaque_demo_access_id"
+        assert body["memory"]["schema_version"] == "farmer_memory_v3"
+        assert body["memory"]["identity"]["farm_name"] == "Shapla Family Farm"
+        assert body["memory"]["identity"]["access_mode"] == "farm"
+        assert body["memory"]["projects"] == []
+
+        project_response = client.post(
+            f"/farmer/profile/{farmer_id}/projects",
+            json={"name": "North field · Rabi"},
+        )
+        assert project_response.status_code == 200
+        project = project_response.json()["project"]
+        assert project["status"] == "draft"
+        assert project["plan_session_id"] is None
+        assert fake.tables["farm_project"][0]["farmer_id"] == farmer_id
+
+        restored = client.post(
+            "/farmer/profile/session",
+            json={"action": "login", "farmer_id": farmer_id},
+        )
+        assert restored.status_code == 200
+        assert restored.json()["session_mode"] == "restored"
+        assert restored.json()["memory"]["identity"]["farm_name"] == (
+            "Shapla Family Farm"
+        )
+        assert restored.json()["memory"]["projects"][0]["project_id"] == (
+            project["project_id"]
+        )
+
+        guest = client.post(
+            "/farmer/profile/session",
+            json={"action": "guest"},
+        )
+        assert guest.status_code == 200
+        assert guest.json()["session_mode"] == "guest"
+        assert guest.json()["memory"]["identity"]["access_mode"] == "guest"
+        assert guest.json()["authentication_boundary"] == (
+            "non_resumable_guest_session"
+        )
+
+        missing = client.post(
+            "/farmer/profile/session",
+            json={
+                "action": "login",
+                "farmer_id": "db2b8ae4-0b82-44ed-8c4f-cb0e72e30b12",
+            },
+        )
+        assert missing.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_intake_is_saved_inside_its_database_project() -> None:
+    fake = FakeSupabaseClient()
+    seed_supabase(fake, validate=False)
+    app.dependency_overrides[require_supabase] = lambda: fake
+    app.dependency_overrides[require_gemini] = lambda: None
+    client = TestClient(app)
+    try:
+        farm = client.post(
+            "/farmer/profile/session",
+            json={"action": "create", "farm_name": "Project Farm"},
+        ).json()
+        farmer_id = farm["farmer_id"]
+        project = client.post(
+            f"/farmer/profile/{farmer_id}/projects",
+            json={"name": "Rabi test project"},
+        ).json()["project"]
+        response = client.post(
+            "/intake/chat",
+            json={
+                "message": "I selected my farm location.",
+                "event": "location_selected",
+                "location": {
+                    "lat": 24.89539917,
+                    "lon": 89.35605547,
+                    "source": "live_location",
+                },
+                "farmer_id": farmer_id,
+                "project_id": project["project_id"],
+                "remember_profile": True,
+            },
+        )
+        assert response.status_code == 200
+        saved = SupabaseStateStore(fake).load_farm_project(
+            farmer_id, project["project_id"]
+        )
+        assert saved is not None
+        assert saved["status"] == "intake"
+        assert saved["intake_session_id"] == response.json()["session_id"]
+        assert saved["location"]["lat"] == 24.895399
+        assert (
+            client.get(f"/farmer/profile/{farmer_id}")
+            .json()["memory"]["projects"][0]["project_id"]
+            == project["project_id"]
+        )
     finally:
         app.dependency_overrides.clear()
 

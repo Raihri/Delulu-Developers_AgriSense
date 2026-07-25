@@ -53,6 +53,21 @@ def test_build_etc_series_uses_real_et0_and_rain() -> None:
     assert series[1]["rain_mm"] == 5.0
 
 
+def test_build_etc_series_preserves_missing_provider_values() -> None:
+    stages = [
+        {"stage": "initial", "stage_order": 1, "duration_days": 3, "kc_start": 0.5, "kc_end": 0.5},
+    ]
+    daily = _daily()
+    daily["et0_fao_evapotranspiration"] = [3.0, None, 2.8]
+    daily["precipitation_sum"] = [0.0, 5.0, None]
+
+    series = build_etc_series(stages, daily)
+
+    assert series[0]["etc_mm"] == 1.5
+    assert series[1]["etc_mm"] is None
+    assert series[2]["rain_mm"] is None
+
+
 def test_temperature_risk_flags_cold_and_heat() -> None:
     risk = temperature_risk(summarize_weather(_daily()), "wheat")
     assert "heat_stress_risk_tmax_ge_34c" in risk["flags"]

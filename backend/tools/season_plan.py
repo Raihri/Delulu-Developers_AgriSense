@@ -59,18 +59,21 @@ def _calendar_events(calendar: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _rate(row: dict[str, Any]) -> dict[str, Any]:
+def _rate(row: dict[str, Any], *, fraction: float = 1.0) -> dict[str, Any]:
     return {
         "nutrient": row["nutrient"],
-        "rate_min": float(row["rate_min"]),
-        "rate_max": float(row["rate_max"]),
+        "rate_min": round(float(row["rate_min"]) * fraction, 6),
+        "rate_max": round(float(row["rate_max"]) * fraction, 6),
         "unit": row["canonical_unit"],
+        "seasonal_fraction": fraction,
     }
 
 
-def _fertilizer_event(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def _fertilizer_event(
+    rows: list[dict[str, Any]], sowing_date: date | None = None
+) -> dict[str, Any]:
     first = rows[0]
-    return {
+    event = {
         "operation": "fertilizer_application",
         "status": "provisional",
         "date": None,
@@ -80,6 +83,21 @@ def _fertilizer_event(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "source_id": first["source_id"],
         "source_locator": first["source_locator"],
     }
+    timing = str(first["application_timing"]).casefold()
+    if sowing_date is not None and ("basal" in timing or "land preparation" in timing):
+        event.update(
+            {
+                "status": "dated_range",
+                "date_start": (sowing_date - timedelta(days=10)).isoformat(),
+                "date_end": (sowing_date - timedelta(days=1)).isoformat(),
+                "date_status": "placed inside the disclosed final-land-preparation window",
+                "assumption": (
+                    "The source specifies basal/final-land-preparation timing but not "
+                    "a calendar day; the project places it in the 10 days before sowing."
+                ),
+            }
+        )
+    return event
 
 
 def _maize_n_events(
@@ -89,15 +107,20 @@ def _maize_n_events(
         return [_fertilizer_event([row])]
 
     citation = {"source_id": row["source_id"], "source_locator": row["source_locator"]}
-    rate = [_rate(row)]
     events: list[dict[str, Any]] = [
         {
             "operation": "fertilizer_application",
-            "status": "provisional",
+            "status": "dated_range",
             "date": None,
+            "date_start": (sowing_date - timedelta(days=10)).isoformat(),
+            "date_end": (sowing_date - timedelta(days=1)).isoformat(),
             "timing": "One-third basal nitrogen application.",
-            "date_status": "basal timing is cited but not a numeric date rule",
-            "rates": rate,
+            "date_status": "placed inside the disclosed final-land-preparation window",
+            "rates": [_rate(row, fraction=1 / 3)],
+            "assumption": (
+                "The source specifies basal timing but not a calendar day; the "
+                "project places it in the 10 days before sowing."
+            ),
             **citation,
         }
     ]
@@ -110,7 +133,7 @@ def _maize_n_events(
                 "date_start": (sowing_date + timedelta(days=start_days)).isoformat(),
                 "date_end": (sowing_date + timedelta(days=end_days)).isoformat(),
                 "timing": f"Nitrogen top-dress {start_days}-{end_days} days after sowing.",
-                "rates": rate,
+                "rates": [_rate(row, fraction=1 / 3)],
                 **citation,
             }
         )
@@ -121,18 +144,32 @@ def _wheat_n_events(
     row: dict[str, Any], sowing_date: date | None
 ) -> list[dict[str, Any]]:
     citation = {"source_id": row["source_id"], "source_locator": row["source_locator"]}
-    rate = [_rate(row)]
     events: list[dict[str, Any]] = [
         {
             "operation": "fertilizer_application",
-            "status": "provisional",
+            "status": "dated_range" if sowing_date is not None else "provisional",
             "date": None,
             "timing": "Two-thirds basal nitrogen at final land preparation.",
-            "date_status": "basal timing is cited but not a numeric date rule",
-            "rates": rate,
+            "date_status": (
+                "placed inside the disclosed final-land-preparation window"
+                if sowing_date is not None
+                else "basal timing is cited but not a numeric date rule"
+            ),
+            "rates": [_rate(row, fraction=2 / 3)],
             **citation,
         }
     ]
+    if sowing_date is not None:
+        events[0].update(
+            {
+                "date_start": (sowing_date - timedelta(days=10)).isoformat(),
+                "date_end": (sowing_date - timedelta(days=1)).isoformat(),
+                "assumption": (
+                    "The source specifies final-land-preparation timing but not a "
+                    "calendar day; the project places it in the 10 days before sowing."
+                ),
+            }
+        )
     if sowing_date is None:
         return events
     # FRG p75: remaining one-third N at 17-21 DAS after the first irrigation.
@@ -144,7 +181,7 @@ def _wheat_n_events(
             "date_start": (sowing_date + timedelta(days=17)).isoformat(),
             "date_end": (sowing_date + timedelta(days=21)).isoformat(),
             "timing": "Remaining one-third nitrogen 17-21 days after sowing, after first irrigation.",
-            "rates": rate,
+            "rates": [_rate(row, fraction=1 / 3)],
             **citation,
         }
     )
@@ -187,6 +224,10 @@ def _dated_operation_timeline(
             "date_start": (sowing_date - timedelta(days=10)).isoformat(),
             "date_end": (sowing_date - timedelta(days=1)).isoformat(),
             "timing": "Final land preparation and basal application window before sowing.",
+            "assumption": (
+                "A disclosed project scheduling window used to turn the cited "
+                "pre-sowing sequence into dates."
+            ),
             **cal_cite,
         },
         {
@@ -224,6 +265,7 @@ def _dated_operation_timeline(
                     "operation": "irrigation_checkpoint",
                     "status": "dated",
                     "date": at(stage_start[stage]),
+                    "stage": stage,
                     "timing": (
                         f"Assess irrigation need at the {stage} stage "
                         "(rising crop water demand)."
@@ -339,7 +381,9 @@ def build_season_plan(
             events.extend(_wheat_n_events(row, normalized_sowing_date))
         else:
             grouped[str(row["application_timing"])].append(row)
-    events.extend(_fertilizer_event(rows) for rows in grouped.values())
+    events.extend(
+        _fertilizer_event(rows, normalized_sowing_date) for rows in grouped.values()
+    )
 
     if normalized_sowing_date is not None:
         stage_rows = _rows(client, "crop_water_stage", crop_id)

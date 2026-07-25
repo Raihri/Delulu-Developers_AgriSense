@@ -47,6 +47,7 @@ def _request() -> dict[str, object]:
         "sowing_date": "2026-11-15",
         "soil_test_class": "medium",
         "budget_bdt": 18000,
+        "allow_assumptions": True,
     }
 
 
@@ -60,6 +61,8 @@ def test_rank_produces_three_costed_weather_grounded_crops(monkeypatch) -> None:
         assert body["status"] == "ranked"
         assert len(body["ranked"]) == 3
         assert body["chosen_crop_id"] == body["ranked"][0]["crop_id"]
+        assert body["recommended_crop_id"] == body["ranked"][0]["crop_id"]
+        assert body["selection_source"] == "agent_default"
         # Every ranked crop exposes reproducible evidence.
         for row in body["ranked"]:
             assert row["soil_suitability_class"] in {"S1", "S2", "S3", "N"}
@@ -93,6 +96,14 @@ def test_rank_produces_three_costed_weather_grounded_crops(monkeypatch) -> None:
         assert grounding["chunks"]
         assert all(chunk["crop"] == plan["crop_id"] for chunk in grounding["chunks"])
         assert grounding["semantic_model_claimed"] is False
+        assert body["explanations"]
+        assert all(item["based_on"] for item in body["explanations"])
+        assert all(item["trace_ids"] for item in body["explanations"])
+        advanced = body["advanced"]
+        assert advanced["input_scheduler"]["fertilizer"]
+        assert advanced["input_scheduler"]["irrigation"]
+        assert advanced["pest_disease_risk"]["risks"]
+        assert advanced["scenario_simulation"]["status"] == "available"
         # Capability 8: every ranked number is backed by a visible tool trace.
         assert body["trace_ids"]
         traces = client.get(f"/plan/preview/{body['session_id']}/traces").json()["traces"]
@@ -105,6 +116,42 @@ def test_rank_produces_three_costed_weather_grounded_crops(monkeypatch) -> None:
         assert weather_trace["display_output_json"]["raw_daily_values"]["et0_fao_evapotranspiration"]
         rank_trace = next(t for t in traces if t["tool"] == "ranking.rank_candidates")
         assert rank_trace["display_output_json"]["chosen_crop_id"] == body["chosen_crop_id"]
+        assert "financials.project_financials" in tools
+        season_trace = next(t for t in traces if t["trace_type"] == "season_plan")
+        assert season_trace["display_output_json"]["events"]
+        rag_trace = next(t for t in traces if t["trace_type"] == "rag_retrieval")
+        assert rag_trace["display_output_json"]["chunks"][0]["text"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_rank_builds_farmer_selected_non_top_crop(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    try:
+        request = _request()
+        request["selected_crop_id"] = "lentil"
+        response = client.post("/plan/rank", json=request)
+        assert response.status_code == 200
+        body = response.json()
+        assert body["recommended_crop_id"] == body["ranked"][0]["crop_id"]
+        assert body["chosen_crop_id"] == "lentil"
+        assert body["chosen_plan"]["crop_id"] == "lentil"
+        assert body["selection_source"] == "farmer"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_rank_rejects_selection_outside_current_ranking(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    try:
+        request = _request()
+        request["selected_crop_id"] = "boro_rice"
+        response = client.post("/plan/rank", json=request)
+        assert response.status_code == 409
+        assert response.json()["detail"]["ranked_crop_ids"] == [
+            row["crop_id"]
+            for row in client.post("/plan/rank", json=_request()).json()["ranked"]
+        ]
     finally:
         app.dependency_overrides.clear()
 
@@ -125,6 +172,31 @@ def test_rank_keeps_paddy_and_missing_water_inputs_fail_closed(monkeypatch) -> N
             and "water_suitability_unassessed" in item["missing_factors"]
             for item in body["excluded"]
         )
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_rank_excludes_null_weather_days_without_crashing(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    forecast = _forecast(7)
+    forecast["daily"]["et0_fao_evapotranspiration"][-1] = None
+    monkeypatch.setattr(
+        "app.fetch_forecast",
+        lambda _lat, _lon, *, days: forecast,
+    )
+    try:
+        response = client.post("/plan/rank", json=_request())
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body["ranked"]) == 3
+        coverage = body["evidence"]["maize"]["water_detail"]["forecast_coverage"]
+        assert coverage["returned_day_count"] == 7
+        assert coverage["used_day_count"] == 6
+        assert coverage["excluded_days"][0]["missing_fields"] == [
+            "et0_fao_evapotranspiration"
+        ]
+        assert "Open-Meteo omitted required values" in body["weather_data_notice"]
+        assert body["weather_data_notice"] in body["warnings"]
     finally:
         app.dependency_overrides.clear()
 

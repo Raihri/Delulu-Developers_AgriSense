@@ -87,6 +87,8 @@ def build_ranking(
     starting_depletion_mm: float | None,
     irrigation_mm_per_day: float | None,
     budget_bdt: float | None = None,
+    allow_assumptions: bool = False,
+    financial_overrides: dict[str, dict[str, float]] | None = None,
     soil_rows: list[dict[str, Any]],
     crop_water_rows: list[dict[str, Any]],
     soil_water_rows: list[dict[str, Any]],
@@ -127,6 +129,22 @@ def build_ranking(
                 water_reason = "no_reviewed_soil_water_profile"
             else:
                 series = build_etc_series(crop_stage_rows, weather_daily)
+                excluded_weather_days = [
+                    {
+                        "date": day.get("date"),
+                        "missing_fields": [
+                            field
+                            for field, value in (
+                                ("et0_fao_evapotranspiration", day.get("et0_mm")),
+                                ("precipitation_sum", day.get("rain_mm")),
+                                ("crop_coefficient", day.get("kc")),
+                            )
+                            if value is None
+                        ],
+                    }
+                    for day in series
+                    if day.get("etc_mm") is None or day.get("rain_mm") is None
+                ]
                 days = [
                     {
                         "etc_mm": day["etc_mm"],
@@ -134,32 +152,48 @@ def build_ranking(
                         "irrigation_mm": irrigation_mm_per_day,
                     }
                     for day in series
-                    if day["etc_mm"] is not None
+                    if day["etc_mm"] is not None and day["rain_mm"] is not None
                 ]
-                try:
-                    balance = calculate_water_balance(
-                        days,
-                        taw_mm=taw,
-                        depletion_fraction=float(
-                            depletion_fractions[crop_id]["p"]
-                        ),
-                        starting_depletion_mm=starting_depletion_mm,
-                        crop_id=crop_id,
-                    )
-                    water_class = balance["water_class"]
-                    water_detail = {
-                        "taw_mm": taw,
-                        "depletion_fraction": float(
-                            depletion_fractions[crop_id]["p"]
-                        ),
-                        "stress_day_fraction": balance["stress_day_fraction"],
-                        "totals": balance["totals"],
-                        "method": balance["method"],
-                        "water_class_policy": balance["water_class_policy"],
-                        **(taw_evidence or {}),
-                    }
-                except UnsupportedWaterModelError:
-                    water_reason = "unassessed_paddy_model"
+                if not days:
+                    water_reason = "weather_daily_missing_required_values"
+                else:
+                    try:
+                        balance = calculate_water_balance(
+                            days,
+                            taw_mm=taw,
+                            depletion_fraction=float(
+                                depletion_fractions[crop_id]["p"]
+                            ),
+                            starting_depletion_mm=starting_depletion_mm,
+                            crop_id=crop_id,
+                        )
+                        water_class = balance["water_class"]
+                        water_detail = {
+                            "taw_mm": taw,
+                            "depletion_fraction": float(
+                                depletion_fractions[crop_id]["p"]
+                            ),
+                            "stress_day_fraction": balance["stress_day_fraction"],
+                            "totals": balance["totals"],
+                            "method": balance["method"],
+                            "method_source": balance["method_source"],
+                            "method_locator": balance["method_locator"],
+                            "water_class_policy": balance["water_class_policy"],
+                            "forecast_coverage": {
+                                "returned_day_count": len(series),
+                                "used_day_count": len(days),
+                                "excluded_days": excluded_weather_days,
+                            },
+                            "inputs": {
+                                "starting_depletion_mm": starting_depletion_mm,
+                                "irrigation_mm_per_day": irrigation_mm_per_day,
+                                "daily_etc_rain_irrigation": days,
+                            },
+                            "days": balance["days"],
+                            **(taw_evidence or {}),
+                        }
+                    except UnsupportedWaterModelError:
+                        water_reason = "unassessed_paddy_model"
 
         rough_profit: float | None = None
         financial: dict[str, Any] | None = None
@@ -167,11 +201,12 @@ def build_ranking(
         crop_yield = [row for row in yield_rows if row["crop_id"] == crop_id]
         fits_budget: bool | None = None
         total_cost: float | None = None
-        if crop_cost and crop_yield:
+        if allow_assumptions and crop_cost and crop_yield:
             financial = project_financials(
                 crop_id,
                 area_acres,
                 allow_assumptions=True,
+                overrides=(financial_overrides or {}).get(crop_id),
                 cost_rows=crop_cost,
                 yield_rows=crop_yield,
             )
@@ -208,11 +243,31 @@ def build_ranking(
     ranking["weather_summary"] = weather_summary
     ranking["evidence"] = evidence
     ranking["budget_bdt"] = budget_bdt
+    incomplete_coverage = next(
+        (
+            detail["water_detail"]["forecast_coverage"]
+            for detail in evidence.values()
+            if detail.get("water_detail")
+            and detail["water_detail"]["forecast_coverage"]["excluded_days"]
+        ),
+        None,
+    )
+    ranking["weather_data_notice"] = (
+        (
+            f"Open-Meteo omitted required values on "
+            f"{len(incomplete_coverage['excluded_days'])} forecast day(s); "
+            f"the water balance used the remaining "
+            f"{incomplete_coverage['used_day_count']} complete day(s)."
+        )
+        if incomplete_coverage
+        else None
+    )
     for row in ranking["ranked"]:
         row["total_cost_bdt"] = evidence[row["crop_id"]]["total_cost_bdt"]
         row["fits_budget"] = evidence[row["crop_id"]]["fits_budget"]
     ranking["assumption_notice"] = (
         "Water class uses the live forecast window and CROPWAT provisional seeds; "
-        "profit uses editable demo assumptions, not observed market prices."
+        "profit uses explicitly accepted editable demo assumptions, not observed "
+        "market prices."
     )
     return ranking

@@ -85,7 +85,7 @@ def build_etc_series(
     daily: dict[str, Any],
     *,
     days_after_sowing_offset: int = 0,
-) -> list[dict[str, float | None]]:
+) -> list[dict[str, Any]]:
     """Combine curated stage Kc with real ET0/rain into a daily water-balance input.
 
     Each returned day carries ``etc_mm = Kc(day) * ET0(day)`` plus the observed
@@ -93,15 +93,27 @@ def build_etc_series(
     """
 
     boundaries = _stage_boundaries(crop_stage_rows)
-    et0 = [float(v) for v in (daily.get("et0_fao_evapotranspiration") or [])]
-    rain = [float(v) for v in (daily.get("precipitation_sum") or [])]
-    series: list[dict[str, float | None]] = []
-    for offset, et0_value in enumerate(et0):
+    dates = list(daily.get("time") or [])
+    et0 = list(daily.get("et0_fao_evapotranspiration") or [])
+    rain = list(daily.get("precipitation_sum") or [])
+    series: list[dict[str, Any]] = []
+    for offset, raw_et0 in enumerate(et0):
+        et0_value = float(raw_et0) if raw_et0 is not None else None
+        raw_rain = rain[offset] if offset < len(rain) else None
+        rain_value = float(raw_rain) if raw_rain is not None else None
         kc = kc_for_day(boundaries, days_after_sowing_offset + offset)
         series.append(
             {
-                "etc_mm": None if kc is None else round(kc * et0_value, 4),
-                "rain_mm": rain[offset] if offset < len(rain) else 0.0,
+                "date": dates[offset] if offset < len(dates) else None,
+                "et0_mm": et0_value,
+                "etc_mm": (
+                    None
+                    if kc is None or et0_value is None
+                    else round(kc * et0_value, 4)
+                ),
+                # Missing provider values stay missing; zero rainfall must come
+                # explicitly from Open-Meteo rather than from a local default.
+                "rain_mm": rain_value,
                 "kc": kc,
             }
         )

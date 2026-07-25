@@ -39,3 +39,25 @@ def test_negative_cost_override_is_rejected() -> None:
             allow_assumptions=True,
             overrides={"labor_cost_per_acre_bdt": -1},
         )
+
+
+def test_all_editable_cost_items_update_the_final_cost_list() -> None:
+    edited = project_financials(
+        "lentil",
+        2,
+        allow_assumptions=True,
+        overrides={
+            "seed_cost_per_acre_bdt": 1000,
+            "fertilizer_bundle_cost_per_acre_bdt": 2000,
+            "labor_cost_per_acre_bdt": 3000,
+            "irrigation_cost_per_acre_bdt": 4000,
+            "other_cost_per_acre_bdt": 5000,
+        },
+    )
+    by_item = {row["item"]: row for row in edited["line_items"]}
+    assert by_item["seed"]["cost_per_acre_bdt"] == 1000
+    assert by_item["fertilizer_bundle"]["cost_per_acre_bdt"] == 2000
+    assert by_item["labor"]["total_cost_bdt"] == 6000
+    assert by_item["irrigation"]["total_cost_bdt"] == 8000
+    assert by_item["other"]["total_cost_bdt"] == 10000
+    assert edited["total_cost_bdt"] == 30000

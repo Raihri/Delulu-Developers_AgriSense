@@ -57,10 +57,14 @@ def test_maize_uses_only_explicit_das_ranges_when_sowing_date_is_known(
         if event["operation"] == "fertilizer_application"
         and event["status"] == "dated_range"
     ]
-    assert fertilizer_ranges == [
-        ("2026-11-20", "2026-11-25"),
-        ("2026-12-20", "2026-12-25"),
-    ]
+    assert ("2026-11-20", "2026-11-25") in fertilizer_ranges
+    assert ("2026-12-20", "2026-12-25") in fertilizer_ranges
+    assert ("2026-09-21", "2026-09-30") in fertilizer_ranges
+    assert all(
+        event["status"] == "dated_range"
+        for event in plan["events"]
+        if event["operation"] == "fertilizer_application"
+    )
     fertilizer_dated = [
         event
         for event in plan["events"]
@@ -75,7 +79,11 @@ def test_maize_uses_only_explicit_das_ranges_when_sowing_date_is_known(
         if event["timing"] == "One-third basal nitrogen application."
     )
     assert basal["date"] is None
-    assert basal["date_status"] == "basal timing is cited but not a numeric date rule"
+    assert (
+        basal["date_status"]
+        == "placed inside the disclosed final-land-preparation window"
+    )
+    assert basal["assumption"]
 
     # The dated timeline now spans land preparation through harvest.
     operations = {event["operation"] for event in plan["events"]}

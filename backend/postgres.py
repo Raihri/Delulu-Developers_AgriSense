@@ -25,6 +25,7 @@ ALLOWED_TABLES = {
     "rag_chunk",
     "build_metadata",
     "farmer_profile",
+    "farm_project",
     "farmer_session",
     "trace_record",
 }
@@ -33,6 +34,7 @@ JSONB_COLUMNS = {
     "rag_chunk": {"metadata"},
     "build_metadata": {"value"},
     "farmer_profile": {"profile_json"},
+    "farm_project": {"project_json"},
     "farmer_session": {"state_json"},
     "trace_record": {"params_json", "display_output_json"},
 }

@@ -1,30 +1,29 @@
 # AgriSense AI — Tier 0 Architecture
 
-> **Scope of this document:** Tier 0 (Core, required) only. It distinguishes the
-> implemented, fail-closed demo foundation from the remaining end-to-end product contract.
-> Tier 1 / Tier 2 are out of scope, but hooks are noted where a Tier-0 choice cheaply
-> unlocks a later tier.
+> **Status note (2026-07-25):** The Tier-0 contract below is implemented for the
+> declared Rabi judge slice. Tier-1 memory, weather alerts, input scheduling,
+> conservative pest screening and scenario comparison are also implemented on
+> the same saved plan. The detailed current acceptance matrix is in
+> `docs/TIER0_GAP_ANALYSIS.md`.
 
 **Team:** Delulu Developers · **Project:** AgriSense AI
 **Goal of Tier 0:** From a short conversation, produce a *grounded, explained, costed
 season plan* for one farm, with a visible agent trace. A single path that runs end to end.
 
-**Implemented checkpoint (2026-07-25):** a runnable FastAPI service, validated source
-registry, machine-readable Boro rice/maize/lentil slice, Supabase Postgres/pgvector
-migration/adapters, coordinate-to-ADM3 lookup, reviewed Bogura Sadar admin-to-AEZ fallback,
-FAO-56 daily water balance, opt-in financial assumptions, ingestion helpers and automated
-tests, plus a deterministic `/plan/preview` controller that composes location, a live
-Open-Meteo weather/ET₀ snapshot, season-filtered crop assessments, cited season events and
-opt-in financials. It creates or
-accepts opaque session IDs, persists compact derived state, and appends safe summaries for
-each computation it actually invokes. Conversational Gemini intake is implemented with
-evidence-checked enums, progressive clarification and compact Supabase context. A complete
-dated season-plan engine, calibrated suitability ranking, semantic embedding model and
-richer trace UI remain work to do. The API
-deliberately does not rank crops until every limiting factor is available.
-The repository contains no Supabase credential. With a backend-only direct database URL,
-the checked-in Round-1 command applies the migration, seeds the curated slice and verifies
-the remote project without placing a credential in source control.
+**Implemented checkpoint (2026-07-25):** A runnable FastAPI/Next.js application,
+validated source registry, machine-readable Boro rice/maize/lentil/wheat data,
+Supabase Postgres/pgvector adapters, coordinate-to-ADM3 lookup, Bogura Sadar
+administrative AEZ candidates, live Open-Meteo weather, FAO-56 daily water
+balance, consent-gated editable finance, and automated tests. The maintained
+conversation path ranks maize, lentil and wheat for Rabi, chooses a crop, builds
+a fully dated land-preparation-to-harvest plan, retrieves crop-specific
+agronomic chunks before rendering advice, emits per-recommendation `based_on`
+records and persists full bounded tool traces. It also produces Tier-1 memory,
+forecast alerts, input schedules, pest screening and budget/rainfall scenarios.
+Missing limiting factors, unsupported seasons, unassessed paddy water and weak
+RAG retrieval still fail closed. Local environment files are ignored and
+excluded from Docker; provider-side rotation and any published-history cleanup
+remain repository-owner operations.
 
 ---
 
@@ -759,14 +758,17 @@ backend/
 │   ├── vector_store.py        # Supabase pgvector/RPC adapter
 │   └── ingest.py              # HTML/PDF/table/OCR extraction + human-review gate
 ├── state/
-│   └── store.py               # Supabase session and sanitized trace records
+│   └── store.py               # sessions, consented farmer profiles and bounded traces
 ├── tools/
 │   ├── weather.py             # live Open-Meteo forecast
 │   ├── geo.py                 # coordinate → HDX ADM3 + aliases/AEZ candidates
 │   ├── water_balance.py       # FAO-56 Rev.1 daily balance
 │   ├── financials.py          # opt-in editable budget assumptions
-│   ├── recommend.py           # three assessments; no premature ranking
-│   └── season_plan.py         # cited crop windows + reviewed fertilizer operations
+│   ├── ranking.py             # same-season limiting-factor ranking
+│   ├── season_plan.py         # dated land-preparation-to-harvest plan
+│   └── advanced.py            # alerts, input schedule, pest risk and scenarios
+├── agent/
+│   └── advice.py              # deterministic based_on explanation renderer
 ├── kb/
 │   ├── sources.yaml           # registry v2 with three independent statuses
 │   ├── source_registry.schema.json
@@ -776,18 +778,18 @@ backend/
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── pyproject.toml
-├── supabase/migrations/        # Postgres schema, pgvector RPC, RLS and grants
-└── demo/index.html             # browser-only judge surface; calls FastAPI, never Supabase
+└── supabase/migrations/        # Postgres schema, pgvector RPC, RLS and grants
 
 dataset/                         # ignored downloaded source assets kept at repo root
-frontend/                        # Next.js browser client; proxies to FastAPI server-side
+frontend/                        # maintained Next.js judge UI; proxies server-side
 docs/DEMO_RUNBOOK.md             # exact Bogura demo script and honest limitations
 ```
 
-The narrative layer remains intentional future work. Conversational intake now uses
-Gemini structured output to map natural farmer phrases to canonical enums. Every accepted
-field requires an exact conversation quote and adequate confidence; unsupported values are
-discarded and probed rather than guessed. Farmers never need to type enum values.
+Conversational intake uses Gemini structured output to map natural farmer
+phrases to canonical enums. Every accepted field requires an exact conversation
+quote and adequate confidence; unsupported values are discarded and probed
+rather than guessed. The deterministic narrative layer renders only
+recommendations backed by structured inputs and crop-specific retrieved chunks.
 
 ---
 

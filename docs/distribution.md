@@ -411,22 +411,13 @@ Handoff to Raima:
 
 ### Round 6 execution record — 2026-07-24
 
-**Status:** `HANDOFF READY`
+**Status:** Superseded on 2026-07-25 by the maintained Next.js flow.
 
-- Added a self-contained responsive judge page at `GET /demo` in
-  [`backend/demo/index.html`](backend/demo/index.html). It calls only same-origin FastAPI
-  `/plan/preview` endpoints; browser code contains no Supabase URL or key.
-- The prefilled Bangla/English Bogura scenario visibly shows ADM3 P-code,
-  explicit AEZ-candidate limitation, three transparent crop assessments,
-  source IDs/locators, cited plan events, missing/unassessed states, warnings,
-  finance opt-in and safe trace IDs.
-- Loading, API-error and deliberately unassessed states are rendered instead of
-  silently hidden. The page can reload the saved compact plan using its session
-  ID.
-- Browser QA passed with Bengali text, no-finance and finance-opt-in paths, plus
-  saved-plan reload. The finance path showed seven traces; the no-finance path
-  showed six.
-- One-page presenter instructions are in [`DEMO_RUNBOOK.md`](DEMO_RUNBOOK.md).
+- `GET /demo` now redirects to the maintained Next.js interface.
+- The current interface uses `/intake/chat` and `/plan/from-conversation` for
+  the complete path and includes all Tier-0 and Tier-1 result panels.
+- The current presenter instructions are in
+  [`DEMO_RUNBOOK.md`](DEMO_RUNBOOK.md).
 
 Handoff to Raima: run `uvicorn app:app --reload`, open `/demo`, and
 use the prefilled Bogura values. No blocking defect remains. Keep the displayed

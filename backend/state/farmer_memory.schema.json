@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agrisense.local/schemas/farmer_memory_v3.json",
+  "title": "AgriSense bounded farmer memory",
+  "description": "The consented, cross-session memory owned by one farm profile. Raw chat, passwords and exact unrounded coordinates are outside this schema.",
+  "type": "object",
+  "required": ["schema_version", "identity", "recognized", "conversation_history", "projects"],
+  "properties": {
+    "schema_version": {
+      "const": "farmer_memory_v3"
+    },
+    "identity": {
+      "type": "object",
+      "required": ["farm_name", "created_at", "access_mode"],
+      "properties": {
+        "farm_name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "access_mode": {
+          "enum": ["farm", "guest"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "recognized": {
+      "description": "Farmer-confirmed planning facts such as area, soil, drainage, water, budget and season.",
+      "type": "object"
+    },
+    "location": {
+      "description": "A consented location rounded to six decimal places.",
+      "type": "object",
+      "required": ["lat", "lon", "source"],
+      "properties": {
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+        "source": { "type": "string" },
+        "label": { "type": ["string", "null"], "maxLength": 180 }
+      },
+      "additionalProperties": false
+    },
+    "conversation_history": {
+      "description": "At most four recent user/assistant pairs, truncated to 500 characters per entry.",
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": { "enum": ["user", "assistant"] },
+          "content": { "type": "string", "maxLength": 500 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "projects": {
+      "description": "An index of up to ten farmer-confirmed crop projects.",
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["project_id", "name", "status", "access_mode"],
+        "properties": {
+          "project_id": { "type": "string" },
+          "plan_session_id": { "type": ["string", "null"] },
+          "intake_session_id": { "type": ["string", "null"] },
+          "name": { "type": "string" },
+          "status": { "enum": ["draft", "intake", "planning", "active", "archived"] },
+          "access_mode": { "enum": ["farm", "guest"] },
+          "crop_id": { "type": ["string", "null"] },
+          "target_season": { "type": ["string", "null"] },
+          "sowing_date": { "type": ["string", "null"], "format": "date" },
+          "area_acres": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+          "budget_bdt": { "type": ["number", "null"], "minimum": 0 },
+          "location": { "type": "object" },
+          "saved_at": { "type": "string", "format": "date-time" },
+          "last_weather_check": { "type": "string", "format": "date-time" },
+          "weather_watch_status": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "last_intake_session_id": { "type": "string" },
+    "last_plan_session_id": { "type": "string" },
+    "last_plan_summary": { "type": "object" }
+  },
+  "additionalProperties": false
+}
