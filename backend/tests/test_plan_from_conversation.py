@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app import app, require_supabase
+from app import app, require_scenario_advisor, require_supabase
 from kb.build import seed_supabase
 from state.store import SupabaseStateStore
 from tests.fakes import FakeSupabaseClient
@@ -312,5 +312,94 @@ def test_saved_plan_scenario_changes_rainfall_and_budget_numbers(monkeypatch):
         assert "scenario.reuse_base_weather_snapshot" in tools
         assert "scenario.scale_rainfall" in tools
         assert "advanced.scenario_deltas" in tools
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_project_scenario_chat_answers_and_runs_a_grounded_simulation(monkeypatch):
+    class FakeScenarioAdvisor:
+        def respond(self, message, *, project_context, history):
+            assert project_context["selected_crop_plan"]["crop_id"] == "lentil"
+            assert "financial_projection" in project_context
+            assert "weather" in project_context
+            if "30%" in message:
+                return {
+                    "intent": "simulate",
+                    "rainfall_change_percent": -30.0,
+                    "budget_change_percent": -20.0,
+                    "answer": "I will test the requested changes.",
+                    "context_sections": ["weather", "financial_projection"],
+                }
+            return {
+                "intent": "project_question",
+                "rainfall_change_percent": None,
+                "budget_change_percent": None,
+                "answer": "Lentil is the farmer-selected crop in this project.",
+                "context_sections": ["selected_crop_plan"],
+            }
+
+    client, fake = _client(monkeypatch)
+    app.dependency_overrides[require_scenario_advisor] = lambda: FakeScenarioAdvisor()
+    try:
+        _seed_intake(
+            fake,
+            "intake-scenario-chat",
+            {
+                "soil_class": "loam",
+                "drainage_condition": "well_drained",
+                "water_availability": "irrigation_available",
+                "budget_bdt": 20_000,
+                "target_season": "rabi",
+                "area_acres": 1,
+                "sowing_date": "2026-11-15",
+            },
+        )
+        base = client.post(
+            "/plan/from-conversation",
+            json={
+                "session_id": "intake-scenario-chat",
+                "lat": 24.89539917,
+                "lon": 89.35605547,
+                "starting_depletion_mm": 40,
+                "irrigation_mm_per_day": 0,
+                "soil_test_class": "medium",
+                "allow_assumptions": True,
+                "selected_crop_id": "lentil",
+            },
+        )
+        assert base.status_code == 200
+        base_id = base.json()["session_id"]
+
+        answer = client.post(
+            "/plan/scenario",
+            json={
+                "base_session_id": base_id,
+                "lat": 24.89539917,
+                "lon": 89.35605547,
+                "message": "Which crop did I choose?",
+            },
+        )
+        assert answer.status_code == 200
+        assert answer.json()["mode"] == "project_question"
+        assert answer.json()["context_used"] == ["selected_crop_plan"]
+
+        simulated = client.post(
+            "/plan/scenario",
+            json={
+                "base_session_id": base_id,
+                "lat": 24.89539917,
+                "lon": 89.35605547,
+                "message": "What if rainfall is 30% lower and budget is 20% lower?",
+            },
+        )
+        assert simulated.status_code == 200
+        body = simulated.json()
+        assert body["scenario"]["rainfall_change_percent"] == -30
+        assert body["scenario"]["budget_after_bdt"] == 16_000
+        assert body["assistant_message"]
+        assert "weather" in body["context_used"]
+        saved_base = SupabaseStateStore(fake).load_session(base_id)
+        assert saved_base is not None
+        assert len(saved_base["scenario_chat_history"]) == 4
     finally:
         app.dependency_overrides.clear()

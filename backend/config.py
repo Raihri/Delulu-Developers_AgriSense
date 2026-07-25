@@ -26,7 +26,7 @@ class SupabaseConfigurationError(RuntimeError):
 
 
 class GeminiConfigurationError(RuntimeError):
-    """Raised when server-side Gemini extraction is not configured."""
+    """Raised when server-side Gemini features are not configured."""
 
 
 @dataclass(frozen=True)

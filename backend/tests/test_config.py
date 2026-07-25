@@ -24,7 +24,6 @@ def test_gemini_key_is_hidden_from_repr(monkeypatch) -> None:
     assert settings.model == "gemini-test"
     assert "secret-gemini-test-key" not in repr(settings)
 
-
 def test_supabase_requires_backend_credentials(monkeypatch) -> None:
     monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)

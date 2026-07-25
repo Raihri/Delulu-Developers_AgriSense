@@ -109,6 +109,9 @@ type Ranking = {
   advanced?: RecordValue | null;
   financial_assumption_consent?: boolean;
   scenario?: RecordValue;
+  assistant_message?: string;
+  context_used?: string[];
+  scenario_chat_history?: RecordValue[];
   intake_trace_session_id?: string;
   intake_trace_ids?: string[];
   farmer_project?: FarmerProject | null;
@@ -138,6 +141,9 @@ type ChatEntry = {
   id: string;
   role: "assistant" | "user";
   content: string;
+};
+type ScenarioChatEntry = ChatEntry & {
+  contextSections?: string[];
 };
 type FinancialCostItem =
   | "seed"
@@ -228,6 +234,20 @@ const costItemLabel = (value: unknown) =>
   label(value);
 const money = (value: unknown) =>
   value == null ? "—" : `৳${Number(value).toLocaleString("en-BD", { maximumFractionDigits: 0 })}`;
+const numericValues = (value: unknown) =>
+  Array.isArray(value)
+    ? value.map(Number).filter((item) => Number.isFinite(item))
+    : [];
+const dateTime = (value: unknown) => {
+  if (typeof value !== "string" || !value) return "Awaiting first check";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleString("en-BD", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+};
 const fitMeaning = (value: unknown) => {
   const code = String(value ?? "").toUpperCase();
   return (
@@ -249,6 +269,13 @@ const entry = (role: ChatEntry["role"], content: string): ChatEntry => ({
   id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
   role,
   content,
+});
+const scenarioWelcome = (): ScenarioChatEntry => ({
+  ...entry(
+    "assistant",
+    "Ask me about this project, or describe a rainfall or total-budget what-if in Bangla or English.",
+  ),
+  contextSections: [],
 });
 
 function tracePresentation(trace: TraceRecord) {
@@ -422,8 +449,10 @@ export default function Home() {
   const [financialCostInputs, setFinancialCostInputs] =
     useState<Record<FinancialCostItem, string>>(emptyFinancialCosts);
   const [budgetInput, setBudgetInput] = useState("");
-  const [scenarioRain, setScenarioRain] = useState("-30");
-  const [scenarioBudget, setScenarioBudget] = useState("-40");
+  const [scenarioMessage, setScenarioMessage] = useState("");
+  const [scenarioChat, setScenarioChat] = useState<ScenarioChatEntry[]>([
+    scenarioWelcome(),
+  ]);
   const [scenarioResult, setScenarioResult] = useState<Ranking | null>(null);
   const [loading, setLoading] = useState<
     "location" | "chat" | "plan" | "reload" | "profile" | null
@@ -466,6 +495,26 @@ export default function Home() {
       ranking.budget_bdt == null ? "" : String(ranking.budget_bdt),
     );
   }, [ranking, selectedCrop]);
+
+  useEffect(() => {
+    const savedHistory = rows(ranking?.scenario_chat_history)
+      .filter(
+        (item) =>
+          (item.role === "user" || item.role === "assistant") &&
+          typeof item.content === "string",
+      )
+      .map((item): ScenarioChatEntry => ({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        role: item.role as "user" | "assistant",
+        content: String(item.content),
+        contextSections: Array.isArray(item.context_sections)
+          ? item.context_sections.map(String)
+          : [],
+      }));
+    setScenarioChat(savedHistory.length ? savedHistory : [scenarioWelcome()]);
+    setScenarioMessage("");
+    setScenarioResult(null);
+  }, [ranking?.session_id]);
 
   async function json(response: Response) {
     const body = (await response.json().catch(() => ({}))) as RecordValue;
@@ -567,6 +616,8 @@ export default function Home() {
     setTraces([]);
     setSelectedCrop("");
     setScenarioResult(null);
+    setScenarioMessage("");
+    setScenarioChat([scenarioWelcome()]);
     setSowingDate("");
     setSoilTestClass("");
     setFinancialCostInputs(emptyFinancialCosts());
@@ -1151,12 +1202,19 @@ export default function Home() {
     }
   }
 
-  async function runScenario() {
+  async function runScenario(messageOverride?: string) {
     if (!ranking || !location) return;
+    const question = (messageOverride ?? scenarioMessage).trim();
+    if (!question) return;
+    setScenarioChat((current) => [
+      ...current,
+      { ...entry("user", question), contextSections: [] },
+    ]);
+    setScenarioMessage("");
     setLoading("plan");
     setError(null);
     try {
-      const revised = (await json(
+      const responseBody = (await json(
         await fetch("/api/plan/scenario", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -1166,16 +1224,35 @@ export default function Home() {
             project_id: activeProject?.project_id ?? null,
             lat: location.lat,
             lon: location.lon,
-            rainfall_change_percent: Number(scenarioRain) || 0,
-            budget_change_percent: Number(scenarioBudget) || 0,
+            message: question,
           }),
         }),
-      )) as Ranking;
-      setScenarioResult(revised);
+      )) as RecordValue;
+      const assistantMessage =
+        typeof responseBody.assistant_message === "string"
+          ? responseBody.assistant_message
+          : "I could not form a grounded answer from this project.";
+      const contextSections = Array.isArray(responseBody.context_used)
+        ? responseBody.context_used.map(String)
+        : [];
+      setScenarioChat((current) => [
+        ...current,
+        {
+          ...entry("assistant", assistantMessage),
+          contextSections,
+        },
+      ]);
+      if (record(responseBody.scenario).base_session_id) {
+        setScenarioResult(responseBody as unknown as Ranking);
+      }
+      const revisedSessionId =
+        typeof responseBody.session_id === "string"
+          ? responseBody.session_id
+          : undefined;
       await loadTraces(
         intakeSessionId ?? "",
         ranking.session_id,
-        revised.session_id,
+        ...(revisedSessionId ? [revisedSessionId] : []),
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Scenario could not be simulated.");
@@ -2149,9 +2226,24 @@ export default function Home() {
 
     const advanced = record(ranking?.advanced);
     const watch = record(advanced.weather_watch);
+    const monitor = record(advanced.project_monitor);
     const scheduler = record(advanced.input_scheduler);
     const pestRisk = record(advanced.pest_disease_risk);
     const simulated = record(scenarioResult?.scenario);
+    const checkedWindow = record(watch.checked_window);
+    const weatherSnapshot = record(ranking?.weather_snapshot);
+    const weatherDaily = record(weatherSnapshot.daily);
+    const rainValues = numericValues(weatherDaily.precipitation_sum);
+    const temperatureValues = numericValues(weatherDaily.temperature_2m_max);
+    const maxForecastRain = rainValues.length ? Math.max(...rainValues) : null;
+    const maxForecastTemperature = temperatureValues.length
+      ? Math.max(...temperatureValues)
+      : null;
+    const weatherMonitoringActive =
+      Boolean(watch.status) && watch.status !== "unavailable";
+    const weatherAlertActive = rows(watch.alerts).length > 0;
+    const lastWeatherCheck =
+      monitor.last_checked_at ?? activeProject?.last_weather_check;
     return (
       <section className="workspace-panel">
         <div className="panel-heading">
@@ -2189,21 +2281,73 @@ export default function Home() {
               </button>
             ) : null}
           </div>
-          <div className="reason-card">
-            <span className="card-label">Weather-triggered advice</span>
-            <h2>{label(watch.status)}</h2>
+          <section className={`reason-card weather-monitor-card ${weatherAlertActive ? "alerting" : ""}`}>
+            <div className="weather-monitor-head">
+              <div>
+                <span className="card-label">TIER 1 · PROACTIVE ADVICE</span>
+                <h2>Weather</h2>
+              </div>
+              <span className={`weather-monitor-state ${weatherAlertActive ? "alerting" : ""}`}>
+                {weatherAlertActive
+                  ? `${rows(watch.alerts).length} alert${rows(watch.alerts).length === 1 ? "" : "s"}`
+                  : weatherMonitoringActive
+                    ? "Monitoring active"
+                    : "Waiting for plan"}
+              </span>
+            </div>
+            <p>
+              AgriSense checks the saved farm forecast when this project opens and
+              every 15 minutes while the app remains open.
+            </p>
+            <div className="weather-proof-grid">
+              <div>
+                <span>Forecast window</span>
+                <strong>
+                  {checkedWindow.date_start && checkedWindow.date_end
+                    ? `${text(checkedWindow.date_start)} → ${text(checkedWindow.date_end)}`
+                    : "Awaiting forecast"}
+                </strong>
+              </div>
+              <div>
+                <span>Highest rain</span>
+                <strong>{maxForecastRain == null ? "—" : `${maxForecastRain} mm/day`}</strong>
+              </div>
+              <div>
+                <span>Highest temperature</span>
+                <strong>
+                  {maxForecastTemperature == null ? "—" : `${maxForecastTemperature}°C`}
+                </strong>
+              </div>
+              <div>
+                <span>Last checked</span>
+                <strong>{dateTime(lastWeatherCheck)}</strong>
+              </div>
+            </div>
+            <div className="weather-rules">
+              <span>Watching for</span>
+              <strong>Heavy rain ≥25 mm/day within 4 days</strong>
+              <strong>Heat ≥34°C</strong>
+              <small>Live source: {label(monitor.source_id ?? weatherSnapshot.source_id ?? "open_meteo")}</small>
+            </div>
             {rows(watch.alerts).map((item) => (
-              <p key={`${text(item.trigger)}-${text(item.date)}`}>
-                <strong>{label(item.trigger)}</strong> · {text(item.value)} {text(item.unit)} · {text(item.action)}
-              </p>
+              <div className="weather-alert" key={`${text(item.trigger)}-${text(item.date)}`}>
+                <strong>{label(item.trigger)} · {text(item.date)}</strong>
+                <p>{text(item.value)} {text(item.unit)} · {text(item.action)}</p>
+              </div>
             ))}
-            {!rows(watch.alerts).length ? <p>No trigger in the current forecast window.</p> : null}
+            {weatherMonitoringActive && !weatherAlertActive ? (
+              <div className="weather-all-clear">
+                <strong>No weather action needed right now</strong>
+                <span>The current forecast is below the alert thresholds. Monitoring continues automatically.</span>
+              </div>
+            ) : null}
             {rows(watch.adjusted_events).map((item, index) => (
-              <p key={`adjusted-${index}`}>
-                <strong>Plan adjusted</strong> · {text(item.weather_adjustment)}
-              </p>
+              <div className="weather-adjustment" key={`adjusted-${index}`}>
+                <strong>Plan adjusted</strong>
+                <span>{text(item.weather_adjustment)}</span>
+              </div>
             ))}
-          </div>
+          </section>
         </div>
 
         <div className="grounding-block">
@@ -2290,19 +2434,91 @@ export default function Home() {
         </div>
         <Notice>{text(pestRisk.pesticide_safety)}</Notice>
 
-        <div className="assessment-details">
-          <label>
-            <span>Rainfall change (%)</span>
-            <input type="number" min="-100" max="300" value={scenarioRain} onChange={(event) => setScenarioRain(event.target.value)} />
-          </label>
-          <label>
-            <span>Budget change (%)</span>
-            <input type="number" min="-100" max="300" value={scenarioBudget} onChange={(event) => setScenarioBudget(event.target.value)} />
-          </label>
-          <button type="button" className="primary-button" onClick={runScenario} disabled={!ranking || loading === "plan"}>
-            Simulate revised plan
-          </button>
-        </div>
+        <section className="scenario-chatbot">
+          <div className="scenario-chat-head">
+            <div>
+              <span className="card-label">PROJECT-AWARE LLM</span>
+              <h2>Ask “what if?” about this farm project</h2>
+              <p>
+                The advisor can use the confirmed farm profile, crop ranking,
+                selected plan, costs, weather, input schedule, risks and cited evidence.
+              </p>
+            </div>
+            <span className="mode-badge">Saved to project</span>
+          </div>
+
+          <div className="scenario-chat-messages" aria-live="polite">
+            {scenarioChat.map((item) => (
+              <article className={`scenario-chat-message ${item.role}`} key={item.id}>
+                <span>{item.role === "assistant" ? "AgriSense" : "You"}</span>
+                <p>{item.content}</p>
+                {item.role === "assistant" && item.contextSections?.length ? (
+                  <small>
+                    Used project context: {item.contextSections.map(label).join(" · ")}
+                  </small>
+                ) : null}
+              </article>
+            ))}
+            {loading === "plan" ? (
+              <article className="scenario-chat-message assistant thinking">
+                <span>AgriSense</span>
+                <p>Reading the saved project and checking the scenario…</p>
+              </article>
+            ) : null}
+          </div>
+
+          <div className="scenario-suggestions" aria-label="Scenario examples">
+            <button
+              type="button"
+              onClick={() => runScenario("What happens if rainfall is 30% lower?")}
+              disabled={!ranking || loading === "plan"}
+            >
+              Rainfall 30% lower
+            </button>
+            <button
+              type="button"
+              onClick={() => runScenario("What happens if my total budget falls by 20%?")}
+              disabled={!ranking || loading === "plan"}
+            >
+              Budget 20% lower
+            </button>
+            <button
+              type="button"
+              onClick={() => runScenario("What farm operation should I prepare for next, and why?")}
+              disabled={!ranking || loading === "plan"}
+            >
+              What should I do next?
+            </button>
+          </div>
+
+          <form
+            className="scenario-composer"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void runScenario();
+            }}
+          >
+            <textarea
+              value={scenarioMessage}
+              onChange={(event) => setScenarioMessage(event.target.value)}
+              placeholder="Ask about this project in Bangla or English…"
+              maxLength={600}
+              rows={2}
+              disabled={!ranking || loading === "plan"}
+            />
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={!ranking || loading === "plan" || !scenarioMessage.trim()}
+            >
+              Ask AgriSense
+            </button>
+          </form>
+          <small className="scenario-chat-limit">
+            Numeric recalculation currently supports rainfall and total-budget
+            percentage changes. Other answers stay grounded in the saved project.
+          </small>
+        </section>
         {scenarioResult ? (
           <div className="scenario-result">
             <div className="grounding-head">
@@ -2360,7 +2576,10 @@ export default function Home() {
               <small>Bangladesh farm intelligence</small>
             </div>
           </div>
-          <span className="database-badge">Database-backed farm planning</span>
+          <div className="entry-session-actions">
+            <a className="tier2-link" href="/plant-health">Plant disease scan</a>
+            <span className="database-badge">Database-backed farm planning</span>
+          </div>
         </header>
         <section className="login-hero">
           <div className="login-copy">
@@ -2377,6 +2596,15 @@ export default function Home() {
               <i>→</i>
               <span><b>3</b> Farm advisor</span>
             </div>
+            <a className="plant-health-home-card" href="/plant-health">
+              <span>⌁</span>
+              <div>
+                <small>TIER 2 · PHOTO + VOICE</small>
+                <strong>Check a plant without logging in</strong>
+                <p>Upload a crop photo, use বাংলা or English, dictate symptoms and hear the result.</p>
+              </div>
+              <b>Open →</b>
+            </a>
           </div>
           <div className="login-panel">
             <form
@@ -2461,6 +2689,7 @@ export default function Home() {
             </div>
           </div>
           <div className="entry-session-actions">
+            <a className="tier2-link" href="/plant-health">Plant disease scan</a>
             <span>{accessMode === "guest" ? "Guest session" : "Farm logged in"}</span>
             <button type="button" className="quiet-button compact-button" onClick={logOutFarm}>
               Log out
@@ -2559,6 +2788,18 @@ export default function Home() {
               </div>
             ) : null}
           </div>
+          <section className="plant-health-hub-card">
+            <div className="plant-health-card-icon">⌁</div>
+            <div>
+              <span className="card-label">TIER 2 · PLANT HEALTH</span>
+              <h2>Have a sick leaf, stem, fruit or visible pest?</h2>
+              <p>
+                Plant Health is a separate photo-screening tool. It supports
+                বাংলা, voice symptom notes and spoken results.
+              </p>
+            </div>
+            <a href="/plant-health">Open plant scanner →</a>
+          </section>
           {accessMode === "guest" ? (
             <Notice tone="warning">
               Guest work is database-backed, but this guest session has no reusable
@@ -2582,6 +2823,7 @@ export default function Home() {
           <span><i /> Supabase-backed</span>
           <span><i /> {activeProject.name}</span>
         </div>
+        <a className="tier2-link" href="/plant-health">Plant disease scan</a>
         <button
           type="button"
           className="quiet-button compact-button"
@@ -2763,6 +3005,19 @@ export default function Home() {
           ) : null}
         </aside>
       </div>
+
+      <section className="project-plant-health-cta">
+        <div className="plant-health-card-icon">⌁</div>
+        <div>
+          <span className="card-label">FINAL PROJECT TOOL · TIER 2</span>
+          <h2>See a crop symptom in the field?</h2>
+          <p>
+            Take a photo for a separate Gemini visual screening. Choose বাংলা
+            or English, speak optional symptom notes and listen to the guidance.
+          </p>
+        </div>
+        <a href="/plant-health">Scan plant health →</a>
+      </section>
 
       <footer>
         <strong>AgriSense AI</strong>

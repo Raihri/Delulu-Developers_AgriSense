@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import logging
 import os
 from datetime import UTC, date, datetime
@@ -21,6 +23,7 @@ from agent.controller import (
 from agent.ranking_service import build_ranking
 from agent.advice import build_explanations
 from agent.schemas import PlanPreviewRequest, PlanPreviewResponse
+from agent.scenario_chat import GeminiScenarioAdvisor
 from agent.tracing import PlanTraceRecorder, weather_trace_output
 from tools.season_plan import SeasonPlanDataError, build_season_plan
 from config import (
@@ -50,6 +53,7 @@ from tools.water_balance import (
     calculate_water_balance,
 )
 from tools.weather import fetch_forecast
+from tools.plant_health import PlantHealthProviderError, diagnose_plant_image
 from tools.advanced import (
     build_input_scheduler,
     build_pest_disease_risk,
@@ -96,6 +100,22 @@ def require_gemini() -> GeminiIntakeExtractor | None:
         return None
 
 
+def require_scenario_advisor() -> GeminiScenarioAdvisor | None:
+    """Provide the project-aware scenario advisor when Gemini is configured."""
+    try:
+        return GeminiScenarioAdvisor(GeminiSettings.from_environment())
+    except GeminiConfigurationError:
+        return None
+
+
+def require_plant_health() -> GeminiSettings | None:
+    """Keep Gemini credentials on FastAPI; browsers receive normalized results."""
+    try:
+        return GeminiSettings.from_environment()
+    except GeminiConfigurationError:
+        return None
+
+
 def _table_rows(
     client: Any,
     table: str,
@@ -117,6 +137,14 @@ def _table_rows(
 class GeoRequest(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
+
+
+class PlantHealthDiagnosisRequest(BaseModel):
+    image_base64: str = Field(min_length=32, max_length=12_000_000)
+    mime_type: Literal["image/jpeg", "image/png", "image/webp"]
+    filename: str | None = Field(default=None, max_length=180)
+    language: Literal["en", "bn"] = "en"
+    symptom_notes: str | None = Field(default=None, max_length=1000)
 
 
 class WaterDay(BaseModel):
@@ -201,8 +229,9 @@ class ScenarioRequest(BaseModel):
     project_id: str | None = Field(default=None, min_length=1, max_length=128)
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
-    rainfall_change_percent: float = Field(default=0, ge=-100, le=300)
-    budget_change_percent: float = Field(default=0, ge=-100, le=300)
+    message: str | None = Field(default=None, min_length=1, max_length=600)
+    rainfall_change_percent: float | None = Field(default=None, ge=-100, le=300)
+    budget_change_percent: float | None = Field(default=None, ge=-100, le=300)
 
 
 class FarmerProfileSessionRequest(BaseModel):
@@ -376,6 +405,59 @@ def health(client: Any = Depends(require_supabase)) -> dict[str, Any]:
         "source_registry_version": metadata.get("source_registry_version"),
         "built_at": metadata.get("built_at"),
     }
+
+
+def _matches_image_signature(image: bytes, mime_type: str) -> bool:
+    signatures = {
+        "image/jpeg": image.startswith(b"\xff\xd8\xff"),
+        "image/png": image.startswith(b"\x89PNG\r\n\x1a\n"),
+        "image/webp": image.startswith(b"RIFF") and image[8:12] == b"WEBP",
+    }
+    return signatures.get(mime_type, False)
+
+
+@app.post("/plant-health/diagnose")
+def diagnose_plant_health(
+    request: PlantHealthDiagnosisRequest,
+    settings: GeminiSettings | None = Depends(require_plant_health),
+) -> dict[str, Any]:
+    """Tier-2 image screening through the server-only Gemini API."""
+
+    if settings is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Plant Health is not configured. Add the server-only "
+                "GEMINI_API_KEY and restart FastAPI."
+            ),
+        )
+    try:
+        image = base64.b64decode(request.image_base64, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="The uploaded image encoding is invalid.",
+        ) from exc
+    if len(image) > 8 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="The image is larger than the 8 MB limit.",
+        )
+    if len(image) < 32 or not _matches_image_signature(image, request.mime_type):
+        raise HTTPException(
+            status_code=415,
+            detail="Upload a valid JPEG, PNG or WebP plant image.",
+        )
+    try:
+        return diagnose_plant_image(
+            image,
+            mime_type=request.mime_type,
+            language=request.language,
+            symptom_notes=request.symptom_notes,
+            settings=settings,
+        )
+    except PlantHealthProviderError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
 
 @app.get("/sources/precedence")
@@ -2031,12 +2113,125 @@ def plan_from_conversation(
     return result
 
 
+def _bounded_scenario_history(value: Any) -> list[dict[str, Any]]:
+    """Keep a compact, displayable project chat without internal identifiers."""
+    if not isinstance(value, list):
+        return []
+    history: list[dict[str, Any]] = []
+    for item in value[-20:]:
+        if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+            continue
+        content = item.get("content")
+        if not isinstance(content, str) or not content.strip():
+            continue
+        row: dict[str, Any] = {
+            "role": str(item["role"]),
+            "content": content.strip()[:1200],
+        }
+        sections = item.get("context_sections")
+        if isinstance(sections, list):
+            row["context_sections"] = [str(section) for section in sections[:10]]
+        history.append(row)
+    return history[-20:]
+
+
+def _scenario_project_context(
+    base: dict[str, Any],
+    *,
+    profile: dict[str, Any] | None,
+    project: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Expose all decision-relevant project learning without IDs or coordinates."""
+    chosen_crop = str(base.get("chosen_crop_id") or "")
+    evidence = base.get("evidence") if isinstance(base.get("evidence"), dict) else {}
+    chosen_evidence = (
+        evidence.get(chosen_crop)
+        if chosen_crop and isinstance(evidence.get(chosen_crop), dict)
+        else {}
+    )
+    advanced = base.get("advanced") if isinstance(base.get("advanced"), dict) else {}
+    weather = (
+        base.get("weather_snapshot")
+        if isinstance(base.get("weather_snapshot"), dict)
+        else {}
+    )
+    safe_project = {
+        key: project.get(key)
+        for key in (
+            "name",
+            "status",
+            "crop_id",
+            "target_season",
+            "sowing_date",
+            "area_acres",
+            "budget_bdt",
+            "last_weather_check",
+            "weather_watch_status",
+        )
+        if isinstance(project, dict) and project.get(key) is not None
+    }
+    safe_snapshot = {
+        key: value
+        for key, value in (base.get("request_snapshot") or {}).items()
+        if key not in {"lat", "lon", "session_id"}
+    }
+    safe_location = base.get("location") if isinstance(base.get("location"), dict) else {}
+    return {
+        "farm_profile": {
+            "confirmed_facts": (
+                profile.get("recognized")
+                if isinstance(profile, dict) and isinstance(profile.get("recognized"), dict)
+                else base.get("profile_used") or {}
+            ),
+            "location_context": {
+                "admin": safe_location.get("admin"),
+                "aez_candidates": safe_location.get("aez_candidates"),
+            },
+        },
+        "project": {**safe_project, "planning_inputs": safe_snapshot},
+        "crop_ranking": {
+            "policy": base.get("policy"),
+            "ranked": base.get("ranked") or [],
+            "excluded": base.get("excluded") or [],
+        },
+        "selected_crop_plan": {
+            "crop_id": chosen_crop,
+            "selection_source": base.get("selection_source"),
+            "plan": base.get("chosen_plan") or {},
+            "explanations": base.get("explanations") or [],
+        },
+        "financial_projection": {
+            "budget_bdt": base.get("budget_bdt"),
+            "selected_crop_financials": chosen_evidence.get("financials"),
+            "warning": (base.get("financials") or {}).get("warning")
+            if isinstance(base.get("financials"), dict)
+            else None,
+        },
+        "weather": {
+            "source_id": weather.get("source_id"),
+            "timezone": weather.get("timezone"),
+            "daily_units": weather.get("daily_units"),
+            "daily": weather.get("daily"),
+            "watch": advanced.get("weather_watch"),
+        },
+        "input_schedule": advanced.get("input_scheduler"),
+        "pest_screening": advanced.get("pest_disease_risk"),
+        "evidence_and_limits": {
+            "selected_crop_evidence": chosen_evidence,
+            "warnings": base.get("warnings") or [],
+            "missing": base.get("missing") or [],
+            "unassessed": base.get("unassessed") or [],
+        },
+    }
+
+
 @app.post("/plan/scenario")
 def plan_scenario(
     request: ScenarioRequest,
     client: Any = Depends(require_supabase),
+    advisor: GeminiScenarioAdvisor | None = Depends(require_scenario_advisor),
 ) -> dict[str, Any]:
-    """Re-run a saved plan with changed rainfall and/or budget numbers."""
+    """Chat with the saved project and rerun audited numeric scenarios."""
 
     store = SupabaseStateStore(client)
     base = store.load_session(request.base_session_id)
@@ -2046,6 +2241,7 @@ def plan_scenario(
             detail="A ranked base-plan session is required for scenario simulation.",
         )
     scenario_project: dict[str, Any] | None = None
+    scenario_profile: dict[str, Any] | None = None
     if request.project_id is not None:
         if request.farmer_id is None:
             raise HTTPException(
@@ -2067,6 +2263,15 @@ def plan_scenario(
                 status_code=404,
                 detail="The scenario project does not belong to this farm session.",
             )
+        try:
+            loaded_profile = store.load_farmer_profile(str(request.farmer_id))
+        except Exception as exc:
+            raise HTTPException(
+                status_code=502,
+                detail="Supabase could not load the farm profile for scenario chat.",
+            ) from exc
+        if isinstance(loaded_profile, dict):
+            scenario_profile = loaded_profile
     if not base.get("chosen_crop_id"):
         raise HTTPException(
             status_code=409,
@@ -2087,9 +2292,105 @@ def plan_scenario(
             status_code=409,
             detail="The saved plan has no weather snapshot for a controlled scenario.",
         )
+    scenario_history = _bounded_scenario_history(
+        base.get("scenario_chat_history")
+        or (
+            scenario_project.get("scenario_chat_history")
+            if isinstance(scenario_project, dict)
+            else []
+        )
+    )
+    interpretation: dict[str, Any] | None = None
+    if request.message is not None:
+        if advisor is None:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Scenario chat needs Gemini. Configure GEMINI_API_KEY on the "
+                    "FastAPI server."
+                ),
+            )
+        try:
+            interpretation = advisor.respond(
+                request.message,
+                project_context=_scenario_project_context(
+                    base,
+                    profile=scenario_profile,
+                    project=scenario_project,
+                ),
+                history=scenario_history,
+            )
+        except GeminiRateLimitError as exc:
+            raise HTTPException(status_code=429, detail=str(exc)) from exc
+        except GeminiModelUnavailableError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except GeminiTransientError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except GeminiExtractionError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        if interpretation["intent"] != "simulate":
+            scenario_history = _bounded_scenario_history(
+                [
+                    *scenario_history,
+                    {"role": "user", "content": request.message},
+                    {
+                        "role": "assistant",
+                        "content": interpretation["answer"],
+                        "context_sections": interpretation["context_sections"],
+                    },
+                ]
+            )
+            chat_tracer = PlanTraceRecorder(store, request.base_session_id)
+            trace_id = chat_tracer.record(
+                step="answer_project_scenario_chat",
+                tool="gemini.project_context_chat",
+                params={"message": request.message[:600]},
+                output={
+                    "intent": interpretation["intent"],
+                    "answer": interpretation["answer"],
+                    "context_sections": interpretation["context_sections"],
+                },
+                trace_type="project_context_chat",
+            )
+            base["scenario_chat_history"] = scenario_history
+            base["trace_ids"] = [
+                *[str(item) for item in base.get("trace_ids") or []],
+                trace_id,
+            ]
+            store.save_session(request.base_session_id, base)
+            if scenario_project is not None and request.farmer_id is not None:
+                scenario_project["scenario_chat_history"] = scenario_history
+                scenario_project["last_activity_at"] = datetime.now(UTC).isoformat()
+                store.save_farm_project(str(request.farmer_id), scenario_project)
+                profile = _farmer_memory_v3(scenario_profile)
+                store.save_farmer_profile(
+                    str(request.farmer_id),
+                    _put_project_in_memory(profile, scenario_project),
+                )
+            return {
+                "schema_version": "scenario_chat_v1",
+                "mode": interpretation["intent"],
+                "assistant_message": interpretation["answer"],
+                "context_used": interpretation["context_sections"],
+                "scenario": None,
+                "scenario_chat_history": scenario_history,
+                "trace_ids": [trace_id],
+            }
+
+    rainfall_change_percent = (
+        float(interpretation["rainfall_change_percent"] or 0)
+        if interpretation is not None
+        else float(request.rainfall_change_percent or 0)
+    )
+    budget_change_percent = (
+        float(interpretation["budget_change_percent"] or 0)
+        if interpretation is not None
+        else float(request.budget_change_percent or 0)
+    )
     original_budget = snapshot.get("budget_bdt")
     adjusted_budget = (
-        round(float(original_budget) * (1 + request.budget_change_percent / 100), 2)
+        round(float(original_budget) * (1 + budget_change_percent / 100), 2)
         if original_budget is not None
         else None
     )
@@ -2098,7 +2399,7 @@ def plan_scenario(
         "lat": request.lat,
         "lon": request.lon,
         "budget_bdt": adjusted_budget,
-        "rainfall_adjustment_percent": request.rainfall_change_percent,
+        "rainfall_adjustment_percent": rainfall_change_percent,
         "session_id": f"scenario-{uuid4()}",
     }
     revised_request = RankRequest(**revised_params)
@@ -2126,8 +2427,8 @@ def plan_scenario(
         summary = "The scenario could not identify a complete leading option."
     scenario = {
         "base_session_id": request.base_session_id,
-        "rainfall_change_percent": request.rainfall_change_percent,
-        "budget_change_percent": request.budget_change_percent,
+        "rainfall_change_percent": rainfall_change_percent,
+        "budget_change_percent": budget_change_percent,
         "budget_before_bdt": original_budget,
         "budget_after_bdt": adjusted_budget,
         "summary": summary,
@@ -2136,26 +2437,90 @@ def plan_scenario(
         "impacts": impacts,
         "deltas": deltas,
     }
+    assistant_message: str | None = None
+    context_used: list[str] = []
+    if interpretation is not None and request.message is not None:
+        changes = []
+        if interpretation["rainfall_change_percent"] is not None:
+            changes.append(
+                f"rainfall {rainfall_change_percent:+g}%"
+            )
+        if interpretation["budget_change_percent"] is not None:
+            changes.append(
+                f"total budget {budget_change_percent:+g}%"
+            )
+        assistant_message = (
+            f"I tested {' and '.join(changes)} against this saved project. "
+            f"{summary} The comparison below shows what changes and what stays the same."
+        )
+        context_used = list(
+            dict.fromkeys(
+                [
+                    *interpretation["context_sections"],
+                    "crop_ranking",
+                    "financial_projection",
+                    "weather",
+                ]
+            )
+        )
+        scenario_history = _bounded_scenario_history(
+            [
+                *scenario_history,
+                {"role": "user", "content": request.message},
+                {
+                    "role": "assistant",
+                    "content": assistant_message,
+                    "context_sections": context_used,
+                },
+            ]
+        )
     scenario_tracer = PlanTraceRecorder(store, revised["session_id"])
+    if interpretation is not None and request.message is not None:
+        interpretation_trace_id = scenario_tracer.record(
+            step="understand_project_scenario_chat",
+            tool="gemini.project_context_chat",
+            params={"message": request.message[:600]},
+            output={
+                "intent": interpretation["intent"],
+                "rainfall_change_percent": interpretation[
+                    "rainfall_change_percent"
+                ],
+                "budget_change_percent": interpretation["budget_change_percent"],
+                "context_sections": interpretation["context_sections"],
+            },
+            trace_type="project_context_chat",
+        )
+        revised["trace_ids"].append(interpretation_trace_id)
     trace_id = scenario_tracer.record(
         step="compare_scenario",
         tool="advanced.scenario_deltas",
         params={
             "base_session_id": request.base_session_id,
-            "rainfall_change_percent": request.rainfall_change_percent,
-            "budget_change_percent": request.budget_change_percent,
+            "rainfall_change_percent": rainfall_change_percent,
+            "budget_change_percent": budget_change_percent,
         },
         output=scenario,
         trace_type="scenario_computation",
     )
     revised["trace_ids"].append(trace_id)
     revised["scenario"] = scenario
+    if assistant_message is not None:
+        revised["assistant_message"] = assistant_message
+        revised["context_used"] = context_used
+        revised["scenario_chat_history"] = scenario_history
     saved = store.load_session(revised["session_id"]) or {}
     saved["scenario"] = scenario
     saved["trace_ids"] = revised["trace_ids"]
     saved["project_id"] = request.project_id
     saved["farmer_id"] = str(request.farmer_id) if request.farmer_id else None
+    if assistant_message is not None:
+        saved["assistant_message"] = assistant_message
+        saved["context_used"] = context_used
+        saved["scenario_chat_history"] = scenario_history
     store.save_session(revised["session_id"], saved)
+    if assistant_message is not None:
+        base["scenario_chat_history"] = scenario_history
+        store.save_session(request.base_session_id, base)
     if scenario_project is not None and request.farmer_id is not None:
         scenario_ids = [
             str(item)
@@ -2174,12 +2539,15 @@ def plan_scenario(
                 ][:20],
                 "last_scenario_session_id": revised["session_id"],
                 "last_activity_at": datetime.now(UTC).isoformat(),
+                **(
+                    {"scenario_chat_history": scenario_history}
+                    if assistant_message is not None
+                    else {}
+                ),
             }
         )
         store.save_farm_project(str(request.farmer_id), scenario_project)
-        profile = _farmer_memory_v3(
-            store.load_farmer_profile(str(request.farmer_id))
-        )
+        profile = _farmer_memory_v3(scenario_profile)
         store.save_farmer_profile(
             str(request.farmer_id),
             _put_project_in_memory(profile, scenario_project),

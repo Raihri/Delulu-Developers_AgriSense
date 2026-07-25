@@ -33,7 +33,11 @@ ranked crops before the dated season plan is built.
 | Proactive weather advice | **Pass while app is active** | Refreshes the active project on open/every 15 minutes, raises heavy-rain/heat alerts and adjusts eligible near-term tasks |
 | Input scheduler | **Pass** | Converts cited rates to farm totals and exposes crop, soil-test class, stage, timing, cost and organic alternatives |
 | Pest and disease risk | **Pass (screening only)** | Combines crop, derived growth stage and weather with prevention, treatment, DAE warning and scouting cost |
-| What-if simulation | **Pass** | Re-runs the plan for rainfall and budget changes and reports changed numeric deltas |
+| Project-aware scenario chat | **Pass** | Gemini answers from the saved project context; rainfall/budget what-ifs re-run deterministic calculations and report numeric deltas |
+
+| Tier 2 capability | Status | Behaviour |
+|---|---|---|
+| Plant disease image screening | **Available when Gemini is configured** | Separate bilingual `/plant-health` module accepts photos plus typed/voice symptom notes, reads results aloud, and shows a Gemini visual screening with top-three possible issues, estimated confidence, prevention and a DAE safety boundary |
 
 These claims are intentionally narrow: Rabi is the only season with three
 reviewed candidates. AEZ resolution is administrative, financial values are
@@ -115,7 +119,8 @@ or a place name also works.
 - `POST /farmer/profile/{farmer_id}/projects/{project_id}/refresh` — refresh a saved project with live weather
 - `POST /plan/from-conversation` — complete Tier-0 path
 - `POST /plan/rank` — deterministic planning core
-- `POST /plan/scenario` — budget/rainfall what-if comparison
+- `POST /plan/scenario` — saved-project chat plus audited budget/rainfall what-if comparison
+- `POST /plant-health/diagnose` — server-only Gemini multimodal image proxy
 - `GET /plan/preview/{session_id}` — restore a saved plan
 - `GET /plan/preview/{session_id}/traces` — inspect the agent trace
 - `GET /kb/search` — cited knowledge retrieval
@@ -143,10 +148,15 @@ ever committed, removing the file from the latest tree is not sufficient:
 rotate the credential in its provider and purge the affected Git history before
 publishing. See [`SECURITY.md`](SECURITY.md).
 
+The Tier-2 image module reuses `GEMINI_API_KEY` and `GEMINI_MODEL` from
+`backend/.env`. Never place the key in `frontend/.env.local` or a
+`NEXT_PUBLIC_*` variable.
+
 ## Documentation
 
 - [`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md) — exact judge flow
 - [`docs/TIER0_GAP_ANALYSIS.md`](docs/TIER0_GAP_ANALYSIS.md) — resolved acceptance audit
+- [`docs/TIER2_IMPLEMENTATION.md`](docs/TIER2_IMPLEMENTATION.md) — image-diagnosis proxy and safety boundary
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design
 - [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) — source and curation audit
 - [`backend/kb/curated/`](backend/kb/curated/) — reviewed tables and policies

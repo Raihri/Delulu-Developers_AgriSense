@@ -35,7 +35,7 @@ sessions.
 | Proactive weather-triggered advice | `POST /farmer/profile/{farmer_id}/projects/{project_id}/refresh` fetches Open-Meteo again, recomputes alerts, and creates adjusted operation dates | Project alert count, adjusted-operation text, `advanced.refresh_saved_project` trace | App-open/15-minute monitoring, not an offline push daemon; trigger thresholds are disclosed project policy |
 | Fertilizer and irrigation scheduler | `build_input_scheduler` derives farm totals, stage/date, allocated costs, and organic options from the farmer-selected crop plan and laboratory soil-test class | Scheduler header names crop and soil-test class; expanded cited quantities | Irrigation entries are checkpoints using the farmer-declared net depth, not an invented prescription |
 | Pest and disease risk | `build_pest_disease_risk` combines crop, derived current growth stage, and live forecast with conservative rules | Each risk shows growth stage, weather trigger, prevention, treatment, scouting cost, and DAE warning | Screening only; no pesticide product or dosage |
-| Scenario simulation | `POST /plan/scenario` reuses the base project’s saved weather snapshot, applies rainfall and/or budget changes, reruns the deterministic planner and saves a new plan session | Plain-language “what could happen” cards for ranking, water, budget and rough profit; raw deltas stay technical | Holding the base snapshot constant isolates the farmer’s hypothetical change; the same disclosed provisional finance and water policies still apply |
+| Project-aware scenario chat | Gemini receives a bounded context containing the confirmed profile, project, ranking, chosen plan, financials, saved weather, scheduler, pest screening, evidence and limits. `POST /plan/scenario` routes ordinary questions to grounded answers and rainfall/budget what-ifs to the deterministic planner | Persistent chat, example questions, disclosed context sections, and plain-language “what could happen” cards | The LLM interprets and explains; it does not calculate numeric results. Audited recalculation currently supports rainfall and total-budget percentage changes, and the saved weather snapshot remains fixed for a fair comparison |
 
 ## Main code locations
 
@@ -44,6 +44,7 @@ sessions.
 - `backend/state/store.py`: bounded Supabase profile/project/session/trace persistence.
 - `backend/supabase/migrations/202607250003_farm_project.sql`: canonical
   project ownership and lifecycle schema.
+- `backend/agent/scenario_chat.py`: bounded Gemini project context and scenario routing.
 - `backend/tools/advanced.py`: weather adjustments, input scheduler,
   growth-stage pest screening and scenario deltas.
 - `frontend/app/page.tsx`: first-screen login/guest gate, mandatory project hub,
